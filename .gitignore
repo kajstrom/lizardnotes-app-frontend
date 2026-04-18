@@ -43,3 +43,8 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local environment files — never commit real values
+# See .env.example for the expected keys
+.env
+.env.local
