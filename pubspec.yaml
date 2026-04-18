@@ -43,6 +43,8 @@ dependencies:
   mime: any
   qr_flutter: any
   google_fonts: any
+  markdown_quill: ^4.3.0
+  markdown: ^7.3.1
 
 dev_dependencies:
   flutter_test:

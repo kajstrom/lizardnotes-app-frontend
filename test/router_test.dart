@@ -66,6 +66,13 @@ void main() {
     testWidgets(
       'authenticated user navigating to /login is redirected to /app/folders',
       (tester) async {
+        // Use a mobile viewport (< 600px) so FolderListScreen is rendered as
+        // the shell child rather than being substituted by EditorScreen on desktop.
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1.0;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+
         final notifier = ValueNotifier<bool>(true);
         final router = AppRouter.buildRouter(notifier);
 

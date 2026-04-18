@@ -165,6 +165,17 @@ class NoteNotifier extends Notifier<NoteState> {
     }
   }
 
+  Future<void> updateContent(String noteId, String markdown) async {
+    final now = DateTime.now();
+    state = state.copyWith(
+      notes: state.notes
+          .map((n) => n.noteId == noteId ? n.copyWith(updatedAt: now) : n)
+          .toList(),
+    );
+    await _api.updateNote(noteId, content: markdown);
+    // No rollback — content stays in the editor on failure; indicator shows error.
+  }
+
   Future<void> deleteNote(String noteId) async {
     final previous = List<Note>.unmodifiable(state.notes);
     final idx = state.notes.indexWhere((n) => n.noteId == noteId);
