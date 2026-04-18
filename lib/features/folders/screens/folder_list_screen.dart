@@ -8,6 +8,7 @@ import '../../../theme/colour_tokens.dart';
 import '../../../theme/text_styles.dart';
 import '../models/folder.dart';
 import '../providers/folder_provider.dart';
+import '../widgets/folder_actions_sheet.dart';
 
 class FolderListScreen extends ConsumerStatefulWidget {
   const FolderListScreen({super.key});
@@ -89,6 +90,11 @@ class _FolderListScreenState extends ConsumerState<FolderListScreen> {
                           '${RouteNames.appFolders}/${folder.folderId}',
                         );
                       },
+                      onLongPress: () => showFolderActionsSheet(
+                        context: context,
+                        folder: folder,
+                        ref: ref,
+                      ),
                     );
                   },
                 ),
@@ -114,11 +120,13 @@ class _FolderRow extends StatefulWidget {
     required this.folder,
     required this.subfolderCount,
     required this.onTap,
+    this.onLongPress,
   });
 
   final Folder folder;
   final int subfolderCount;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   State<_FolderRow> createState() => _FolderRowState();
@@ -130,7 +138,9 @@ class _FolderRowState extends State<_FolderRow> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: widget.onTap,
+      onLongPress: widget.onLongPress,
       onTapDown: (_) => setState(() => _pressed = true),
       onTapUp: (_) => setState(() => _pressed = false),
       onTapCancel: () => setState(() => _pressed = false),

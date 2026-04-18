@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../api/api_client.dart';
+import '../../../router/app_router.dart';
 import '../../../theme/colour_tokens.dart';
 import '../../../theme/dimensions.dart';
 import '../../../theme/text_styles.dart';
@@ -64,7 +66,6 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   // Desktop floating toolbar
   OverlayEntry? _toolbarEntry;
   Offset? _lastTapPosition;
-  bool _editorFocused = false;
 
   @override
   void initState() {
@@ -108,12 +109,10 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   }
 
   void _onEditorFocusChanged() {
-    setState(() => _editorFocused = _editorFocus.hasFocus);
     // Do NOT dismiss the floating toolbar here. On web the editor's FocusNode
     // loses focus whenever any non-focusable widget is tapped (including the
     // toolbar buttons), which would remove the overlay before onTap fires.
-    // The overlay is already managed via _updateToolbarPosition (collapsed
-    // selection → remove) and _onScroll.
+    // The overlay is managed via _updateToolbarPosition and _onScroll.
   }
 
   void _onScroll() {
@@ -222,6 +221,11 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   // ── Desktop floating toolbar ─────────────────────────────────────────────
 
   void _updateToolbarPosition() {
+    // Floating toolbar is desktop-only; mobile uses the docked toolbar.
+    if (!mounted) return;
+    final isDesktop = MediaQuery.of(context).size.width >= 600;
+    if (!isDesktop) return;
+
     final selection = _quillController.selection;
     final hasSelection = !selection.isCollapsed;
 
@@ -323,8 +327,18 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
             breadcrumbSegments: loadedNote != null
                 ? _buildBreadcrumbSegments(loadedNote)
                 : const [],
-            onToggleNoteList: () =>
-                ref.read(noteListVisibleProvider.notifier).toggle(),
+            onToggleNoteList: isDesktop
+                ? () => ref.read(noteListVisibleProvider.notifier).toggle()
+                : () {
+                    final folderId = loadedNote?.folderId ??
+                        ref.read(noteProvider).currentFolderId;
+                    if (folderId != null) {
+                      context.go(
+                          '${RouteNames.appFolders}/$folderId');
+                    } else {
+                      context.go(RouteNames.appFolders);
+                    }
+                  },
             onActionsMenu: (pos) async {
               if (loadedNote == null) return;
               if (isDesktop) {
@@ -369,7 +383,10 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
           // ── Attachment bar slot (wired in later step) ─────────────────
           const _AttachmentBarSlot(),
           // ── Mobile docked format toolbar ──────────────────────────────
-          if (!isDesktop && _editorFocused)
+          // Show whenever a note is loaded, not based on _editorFocused.
+          // Tapping toolbar buttons defocuses the editor before onTap fires,
+          // which would remove the bar and swallow the format action.
+          if (!isDesktop && _loadState == _LoadState.loaded)
             _MobileFormatBar(
               controller: _quillController,
               editorFocusNode: _editorFocus,
@@ -422,7 +439,7 @@ class _Topbar extends StatelessWidget {
           else
             _TopbarIconButton(
               icon: Icons.chevron_left,
-              onTap: () => Navigator.of(context).pop(),
+              onTap: onToggleNoteList,
             ),
 
           // Centre: breadcrumb or note title

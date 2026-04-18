@@ -113,7 +113,8 @@ abstract final class AppRouter {
             GoRoute(
               path: '/app',
               // /app itself redirects to /app/folders.
-              redirect: (context, state) => RouteNames.appFolders,
+              redirect: (context, state) =>
+                  state.uri.toString() == '/app' ? RouteNames.appFolders : null,
               routes: [
                 GoRoute(
                   path: 'folders',

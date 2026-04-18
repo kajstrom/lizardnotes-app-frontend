@@ -76,6 +76,7 @@ class NoteNotifier extends Notifier<NoteState> {
 
   Future<void> loadNotes(String folderId) async {
     state = state.copyWith(
+      notes: const [],
       status: NoteStatus.loading,
       clearError: true,
       currentFolderId: folderId,
