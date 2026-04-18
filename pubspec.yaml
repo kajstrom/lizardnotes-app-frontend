@@ -45,6 +45,9 @@ dependencies:
   google_fonts: any
   markdown_quill: ^4.3.0
   markdown: ^7.3.1
+  url_launcher: any
+  flutter_dropzone: any
+  dio: any
 
 dev_dependencies:
   flutter_test:

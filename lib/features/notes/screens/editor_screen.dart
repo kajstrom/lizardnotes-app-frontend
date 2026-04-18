@@ -8,6 +8,8 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../api/api_client.dart';
 import '../../../router/app_router.dart';
+import '../../attachments/providers/attachment_provider.dart';
+import '../../attachments/widgets/attachment_bar.dart';
 import '../../../theme/colour_tokens.dart';
 import '../../../theme/dimensions.dart';
 import '../../../theme/text_styles.dart';
@@ -185,6 +187,10 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
 
     try {
       final note = await ref.read(apiClientProvider).getNote(noteId);
+      // Load attachments alongside the note (fire-and-forget).
+      unawaited(
+        ref.read(attachmentProvider(noteId).notifier).loadAttachments(),
+      );
       final doc = ContentPipeline.fromMarkdown(note.content);
       _quillController.document = doc;
       _titleController.text = note.title;
@@ -380,8 +386,9 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                 ),
             },
           ),
-          // ── Attachment bar slot (wired in later step) ─────────────────
-          const _AttachmentBarSlot(),
+          // ── Attachment bar ──────────────────────────────────────────
+          if (_loadState == _LoadState.loaded && _loadedNoteId != null)
+            AttachmentBar(noteId: _loadedNoteId!),
           // ── Mobile docked format toolbar ──────────────────────────────
           // Show whenever a note is loaded, not based on _editorFocused.
           // Tapping toolbar buttons defocuses the editor before onTap fires,
@@ -938,17 +945,6 @@ class _EmptyState extends StatelessWidget {
       ),
     );
   }
-}
-
-// ---------------------------------------------------------------------------
-// Attachment bar slot (wired in later step)
-// ---------------------------------------------------------------------------
-
-class _AttachmentBarSlot extends StatelessWidget {
-  const _AttachmentBarSlot();
-
-  @override
-  Widget build(BuildContext context) => const SizedBox.shrink();
 }
 
 // ---------------------------------------------------------------------------

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
+import '../features/attachments/models/attachment.dart';
 import '../features/folders/models/folder.dart';
 import '../features/notes/models/note.dart';
 
@@ -149,6 +150,68 @@ class ApiClient {
       headers: await _headers(),
     );
     _assertSuccess(response, 'deleteNote');
+  }
+
+  // ── Attachments ───────────────────────────────────────────────────────────
+
+  Future<List<Attachment>> getAttachments(String noteId) async {
+    final response = await http.get(
+      _uri('/notes/$noteId/attachments'),
+      headers: await _headers(),
+    );
+    _assertSuccess(response, 'getAttachments');
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => Attachment.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<CreateAttachmentResult> createAttachment({
+    required String noteId,
+    required String filename,
+    required String mimeType,
+    required int size,
+  }) async {
+    final body = <String, dynamic>{
+      'filename': filename,
+      'mimeType': mimeType,
+      'size': size,
+    };
+    final response = await http.post(
+      _uri('/notes/$noteId/attachments'),
+      headers: await _headers(),
+      body: jsonEncode(body),
+    );
+    _assertSuccess(response, 'createAttachment');
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return CreateAttachmentResult(
+      attachment: Attachment.fromJson(json['attachment'] as Map<String, dynamic>),
+      uploadUrl: json['uploadUrl'] as String,
+    );
+  }
+
+  Future<String> getAttachmentDownloadUrl({
+    required String noteId,
+    required String attachmentId,
+  }) async {
+    final response = await http.get(
+      _uri('/notes/$noteId/attachments/$attachmentId'),
+      headers: await _headers(),
+    );
+    _assertSuccess(response, 'getAttachmentDownloadUrl');
+    final json = jsonDecode(response.body) as Map<String, dynamic>;
+    return json['downloadUrl'] as String;
+  }
+
+  Future<void> deleteAttachment({
+    required String noteId,
+    required String attachmentId,
+  }) async {
+    final response = await http.delete(
+      _uri('/notes/$noteId/attachments/$attachmentId'),
+      headers: await _headers(),
+    );
+    _assertSuccess(response, 'deleteAttachment');
   }
 }
 
