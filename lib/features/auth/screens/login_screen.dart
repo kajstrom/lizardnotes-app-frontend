@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../router/app_router.dart';
+import '../../../theme/colour_tokens.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/auth_field.dart';
 import '../widgets/auth_shell.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -48,6 +50,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return AuthShell(
       title: 'Sign in',
+      subtitle: 'Welcome back to LizardNotes.',
       child: Form(
         key: _formKey,
         child: Column(
@@ -58,34 +61,44 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Text(
                   auth.errorMessage!,
-                  style: const TextStyle(color: Color(0xFFc0524a)),
+                  style: const TextStyle(color: LnColors.lnDanger),
                   textAlign: TextAlign.center,
                 ),
               ),
-            TextFormField(
-              controller: _emailCtrl,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
-              autocorrect: false,
-              textInputAction: TextInputAction.next,
-              validator: (v) =>
-                  (v == null || v.isEmpty) ? 'Enter your email' : null,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _passwordCtrl,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                suffixIcon: IconButton(
-                  icon: Icon(_obscure ? Icons.visibility : Icons.visibility_off),
-                  onPressed: () => setState(() => _obscure = !_obscure),
-                ),
+            AuthField(
+              label: 'Email',
+              child: TextFormField(
+                controller: _emailCtrl,
+                decoration: const InputDecoration(),
+                style: const TextStyle(
+                    fontSize: 14, color: LnColors.lnText),
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                textInputAction: TextInputAction.next,
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? 'Enter your email' : null,
               ),
-              obscureText: _obscure,
-              textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => _submit(),
-              validator: (v) =>
-                  (v == null || v.isEmpty) ? 'Enter your password' : null,
+            ),
+            const SizedBox(height: 16),
+            AuthField(
+              label: 'Password',
+              child: TextFormField(
+                controller: _passwordCtrl,
+                decoration: InputDecoration(
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                        _obscure ? Icons.visibility : Icons.visibility_off),
+                    onPressed: () => setState(() => _obscure = !_obscure),
+                  ),
+                ),
+                style: const TextStyle(
+                    fontSize: 14, color: LnColors.lnText),
+                obscureText: _obscure,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _submit(),
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? 'Enter your password' : null,
+              ),
             ),
             const SizedBox(height: 24),
             ElevatedButton(

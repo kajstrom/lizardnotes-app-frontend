@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../../theme/colour_tokens.dart';
+import '../../../theme/dimensions.dart';
 
-enum AuthInfoBoxVariant { amber, green }
+enum AuthInfoBoxVariant { amber, green, neutral }
 
 /// Tinted info box used on auth screens to show contextual messages.
 ///
-/// [AuthInfoBoxVariant.amber] — warning (e.g. temporary-password notice).
-/// [AuthInfoBoxVariant.green] — success (e.g. reset code sent confirmation).
+/// Variants (§7.3):
+///   [amber]   — warning, e.g. temporary-password notice.
+///   [green]   — success, e.g. reset code sent confirmation.
+///   [neutral] — contextual note, e.g. MFA sign-in context.
 class AuthInfoBox extends StatelessWidget {
   const AuthInfoBox({
     super.key,
@@ -20,29 +23,53 @@ class AuthInfoBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (bg, border, fg) = switch (variant) {
+    final (bg, border, fg, icon) = switch (variant) {
       AuthInfoBoxVariant.amber => (
-          const Color(0x1Eb87c2a),
+          LnColors.lnAmberBg,
+          LnColors.lnAmberBorder,
           LnColors.lnAmber,
-          LnColors.lnAmber,
+          const Icon(Icons.warning_amber_rounded, size: 16,
+              color: LnColors.lnAmber),
         ),
       AuthInfoBoxVariant.green => (
-          const Color(0x1E4a9e6a),
+          LnColors.lnSuccessBg,
+          LnColors.lnSuccessBorder,
           LnColors.lnSuccess,
-          LnColors.lnSuccess,
+          const Icon(Icons.check_circle_outline, size: 16,
+              color: LnColors.lnSuccess),
+        ),
+      AuthInfoBoxVariant.neutral => (
+          LnColors.lnSurface2,
+          LnColors.lnBorder,
+          LnColors.lnText2,
+          null as Widget?,
         ),
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: border),
+        borderRadius: BorderRadius.circular(LnDims.r6),
+        border: Border.all(color: border, width: 1),
       ),
-      child: Text(
-        message,
-        style: TextStyle(color: fg, fontSize: 13, height: 1.5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (icon != null) ...[
+            Padding(
+              padding: const EdgeInsets.only(top: 1, right: 8),
+              child: icon,
+            ),
+          ],
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(color: fg, fontSize: 13, height: 1.5),
+            ),
+          ),
+        ],
       ),
     );
   }

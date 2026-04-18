@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../router/app_router.dart';
 import '../../../theme/colour_tokens.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/auth_info_box.dart';
 import '../widgets/auth_shell.dart';
 import '../widgets/otp_input_row.dart';
 
@@ -28,33 +29,27 @@ class _MfaCodeScreenState extends ConsumerState<MfaCodeScreen> {
 
     final auth = ref.watch(authProvider);
     final isLoading = auth.status == AuthStatus.loading;
+    final email = auth.pendingEmail ?? '';
 
     return AuthShell(
-      title: 'Two-factor authentication',
+      title: 'Enter verification code',
+      subtitle: 'Open your authenticator app and enter the 6-digit code.',
       useLockMark: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: LnColors.lnAccentBg,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: LnColors.lnAccent),
+          if (email.isNotEmpty)
+            AuthInfoBox(
+              variant: AuthInfoBoxVariant.neutral,
+              message: 'Signing in as $email',
             ),
-            child: const Text(
-              'Open your authenticator app and enter the 6-digit code.',
-              style: TextStyle(
-                  color: LnColors.lnAccent2, fontSize: 13, height: 1.5),
-            ),
-          ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 16),
           if (auth.status == AuthStatus.error && auth.errorMessage != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: Text(
                 auth.errorMessage!,
-                style: const TextStyle(color: Color(0xFFc0524a)),
+                style: const TextStyle(color: LnColors.lnDanger),
                 textAlign: TextAlign.center,
               ),
             ),

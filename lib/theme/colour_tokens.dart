@@ -29,4 +29,10 @@ abstract final class LnColors {
   // Status
   static const Color lnSuccess = Color(0xFF4a9e6a);
   static const Color lnAmber = Color(0xFFb87c2a);
+
+  // Info-box semi-transparent backgrounds and borders (§7.3)
+  static const Color lnAmberBg = Color(0x1Fb87c2a);     // rgba(184,124,42,0.12)
+  static const Color lnAmberBorder = Color(0x66b87c2a); // rgba(184,124,42,0.40)
+  static const Color lnSuccessBg = Color(0x1A4a9e6a);   // rgba(74,158,106,0.10)
+  static const Color lnSuccessBorder = Color(0x594a9e6a); // rgba(74,158,106,0.35)
 }

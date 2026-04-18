@@ -2,13 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../theme/colour_tokens.dart';
+import '../../../theme/dimensions.dart';
+import '../../../theme/text_styles.dart';
 
 /// A row of six single-digit text fields for OTP / TOTP entry.
 ///
+/// Spec (§7.4):
+///   42 × 50 px boxes, 8 px gap, JetBrains Mono 20 px / 500.
+///   Focused or filled: border lnAccent; filled value: text lnAccent2.
+///
 /// Behaviour:
-/// - Typing a digit auto-advances focus to the next field.
-/// - Backspace on an empty field moves focus to the previous field.
-/// - When all six digits are filled [onComplete] fires with the 6-digit string.
+///   - Typing a digit auto-advances focus to the next field.
+///   - Backspace on an empty field moves focus to the previous field.
+///   - When all six digits are filled [onComplete] fires with the 6-digit string.
 class OtpInputRow extends StatefulWidget {
   const OtpInputRow({super.key, required this.onComplete});
 
@@ -29,6 +35,10 @@ class _OtpInputRowState extends State<OtpInputRow> {
   @override
   void initState() {
     super.initState();
+    // Rebuild when any cell value changes so filled-text color updates.
+    for (final c in _controllers) {
+      c.addListener(() => setState(() {}));
+    }
     for (var i = 0; i < _length; i++) {
       final index = i;
       _focusNodes[index].onKeyEvent = (_, event) {
@@ -93,15 +103,21 @@ class _OtpInputRowState extends State<OtpInputRow> {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(_length, _buildCell),
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        for (var i = 0; i < _length; i++) ...[
+          _buildCell(i),
+          if (i < _length - 1) const SizedBox(width: 8),
+        ],
+      ],
     );
   }
 
   Widget _buildCell(int index) {
+    final isFilled = _controllers[index].text.isNotEmpty;
     return SizedBox(
-      width: 44,
-      height: 52,
+      width: 42,
+      height: 50,
       child: TextField(
         controller: _controllers[index],
         focusNode: _focusNodes[index],
@@ -111,27 +127,26 @@ class _OtpInputRowState extends State<OtpInputRow> {
           FilteringTextInputFormatter.digitsOnly,
           LengthLimitingTextInputFormatter(1),
         ],
-        style: const TextStyle(
-          color: LnColors.lnText,
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
+        style: LnTextStyles.otpDigit(
+          color: isFilled ? LnColors.lnAccent2 : LnColors.lnText,
         ),
         decoration: InputDecoration(
           filled: true,
           fillColor: LnColors.lnSurface2,
           contentPadding: EdgeInsets.zero,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(LnDims.r6),
             borderSide: const BorderSide(color: LnColors.lnBorder2),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: LnColors.lnBorder2),
+            borderRadius: BorderRadius.circular(LnDims.r6),
+            borderSide: BorderSide(
+              color: isFilled ? LnColors.lnAccent : LnColors.lnBorder2,
+            ),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide:
-                const BorderSide(color: LnColors.lnAccent, width: 1.5),
+            borderRadius: BorderRadius.circular(LnDims.r6),
+            borderSide: const BorderSide(color: LnColors.lnAccent),
           ),
         ),
         onChanged: (v) => _onChanged(index, v),

@@ -45,28 +45,33 @@ void main() {
       expect(textWidget.style?.color, LnColors.lnSuccess);
     });
 
-    testWidgets('amber container has amber border colour', (tester) async {
+    // Border colours use semi-transparent variants per §7.3 of the design spec.
+    testWidgets('amber container has semi-transparent amber border colour',
+        (tester) async {
       await tester.pumpWidget(_wrap(const AuthInfoBox(
         message: 'Warning',
         variant: AuthInfoBoxVariant.amber,
       )));
 
-      final container = tester.widget<Container>(find.byType(Container).first);
+      final container =
+          tester.widget<Container>(find.byType(Container).first);
       final decoration = container.decoration as BoxDecoration;
       final border = decoration.border as Border;
-      expect(border.top.color, LnColors.lnAmber);
+      expect(border.top.color, LnColors.lnAmberBorder);
     });
 
-    testWidgets('green container has success border colour', (tester) async {
+    testWidgets('green container has semi-transparent success border colour',
+        (tester) async {
       await tester.pumpWidget(_wrap(const AuthInfoBox(
         message: 'Success',
         variant: AuthInfoBoxVariant.green,
       )));
 
-      final container = tester.widget<Container>(find.byType(Container).first);
+      final container =
+          tester.widget<Container>(find.byType(Container).first);
       final decoration = container.decoration as BoxDecoration;
       final border = decoration.border as Border;
-      expect(border.top.color, LnColors.lnSuccess);
+      expect(border.top.color, LnColors.lnSuccessBorder);
     });
   });
 }

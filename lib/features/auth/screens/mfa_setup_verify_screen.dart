@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../router/app_router.dart';
+import '../../../theme/colour_tokens.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_shell.dart';
 import '../widgets/otp_input_row.dart';
@@ -33,20 +34,20 @@ class _MfaSetupVerifyScreenState extends ConsumerState<MfaSetupVerifyScreen> {
     final isLoading = auth.status == AuthStatus.loading;
 
     return AuthShell(
-      title: 'Verify authenticator',
-      subtitle: 'Step 2 of 2 — enter the 6-digit code from your app.',
+      title: 'Verify your authenticator',
+      subtitle: 'Enter the 6-digit code from your authenticator app.',
       useLockMark: true,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          StepIndicator(currentStep: 2),
+          const StepIndicator(currentStep: 2),
           const SizedBox(height: 24),
           if (auth.status == AuthStatus.error && auth.errorMessage != null)
             Padding(
               padding: const EdgeInsets.only(bottom: 16),
               child: Text(
                 auth.errorMessage!,
-                style: const TextStyle(color: Color(0xFFc0524a)),
+                style: const TextStyle(color: LnColors.lnDanger),
                 textAlign: TextAlign.center,
               ),
             ),

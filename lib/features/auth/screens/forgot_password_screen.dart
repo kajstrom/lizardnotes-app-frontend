@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../router/app_router.dart';
+import '../../../theme/colour_tokens.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/auth_field.dart';
 import '../widgets/auth_shell.dart';
 
 class ForgotPasswordScreen extends ConsumerStatefulWidget {
@@ -30,8 +32,8 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
     final isLoading = auth.status == AuthStatus.loading;
 
     return AuthShell(
-      title: 'Reset password',
-      subtitle: "We'll send a reset code to your email.",
+      title: 'Reset your password',
+      subtitle: "We'll email you a code to reset your password.",
       child: Form(
         key: _formKey,
         child: Column(
@@ -42,19 +44,23 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Text(
                   auth.errorMessage!,
-                  style: const TextStyle(color: Color(0xFFc0524a)),
+                  style: const TextStyle(color: LnColors.lnDanger),
                   textAlign: TextAlign.center,
                 ),
               ),
-            TextFormField(
-              controller: _emailCtrl,
-              decoration: const InputDecoration(labelText: 'Email'),
-              keyboardType: TextInputType.emailAddress,
-              autocorrect: false,
-              textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => _submit(),
-              validator: (v) =>
-                  (v == null || v.isEmpty) ? 'Enter your email' : null,
+            AuthField(
+              label: 'Email',
+              child: TextFormField(
+                controller: _emailCtrl,
+                decoration: const InputDecoration(),
+                style: const TextStyle(fontSize: 14, color: LnColors.lnText),
+                keyboardType: TextInputType.emailAddress,
+                autocorrect: false,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _submit(),
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? 'Enter your email' : null,
+              ),
             ),
             const SizedBox(height: 24),
             ElevatedButton(
