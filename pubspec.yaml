@@ -41,6 +41,7 @@ dependencies:
   shared_preferences: any
   file_picker: any
   mime: any
+  qr_flutter: any
 
 dev_dependencies:
   flutter_test:
@@ -51,6 +52,7 @@ dev_dependencies:
   riverpod_generator: any
   custom_lint: any
   riverpod_lint: any
+  mocktail: any
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

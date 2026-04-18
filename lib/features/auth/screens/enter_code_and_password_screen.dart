@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../router/app_router.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/auth_info_box.dart';
 import '../widgets/auth_shell.dart';
 
-class SetPasswordScreen extends ConsumerStatefulWidget {
-  const SetPasswordScreen({super.key});
+class EnterCodeAndPasswordScreen extends ConsumerStatefulWidget {
+  const EnterCodeAndPasswordScreen({super.key});
 
   @override
-  ConsumerState<SetPasswordScreen> createState() => _SetPasswordScreenState();
+  ConsumerState<EnterCodeAndPasswordScreen> createState() =>
+      _EnterCodeAndPasswordScreenState();
 }
 
-class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
+class _EnterCodeAndPasswordScreenState
+    extends ConsumerState<EnterCodeAndPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _codeCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _obscureNew = true;
@@ -21,6 +26,7 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
 
   @override
   void dispose() {
+    _codeCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
     super.dispose();
@@ -28,22 +34,29 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<AuthState>(authProvider, (_, next) {
+      if (next.status == AuthStatus.unauthenticated && next.errorMessage == null) {
+        // Reset complete — go back to login.
+        context.go(RouteNames.login);
+      }
+    });
+
     final auth = ref.watch(authProvider);
     final isLoading = auth.status == AuthStatus.loading;
+    final email = auth.pendingEmail ?? '';
 
     return AuthShell(
       title: 'Set new password',
-      subtitle: 'Choose a permanent password for your account.',
       child: Form(
         key: _formKey,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const AuthInfoBox(
-              variant: AuthInfoBoxVariant.amber,
+              variant: AuthInfoBoxVariant.green,
               message:
-                  'You were assigned a temporary password. '
-                  'Please set a new one to continue.',
+                  'A reset code has been sent to your email. '
+                  'Enter it below along with your new password.',
             ),
             const SizedBox(height: 20),
             if (auth.status == AuthStatus.error && auth.errorMessage != null)
@@ -56,26 +69,28 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
                 ),
               ),
             TextFormField(
+              controller: _codeCtrl,
+              decoration: const InputDecoration(labelText: 'Reset code'),
+              keyboardType: TextInputType.number,
+              textInputAction: TextInputAction.next,
+              validator: (v) =>
+                  (v == null || v.isEmpty) ? 'Enter the reset code' : null,
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
               controller: _passwordCtrl,
               decoration: InputDecoration(
                 labelText: 'New password',
-                hintText: 'Min 8 chars, one number, one symbol',
                 suffixIcon: IconButton(
-                  icon:
-                      Icon(_obscureNew ? Icons.visibility : Icons.visibility_off),
+                  icon: Icon(
+                      _obscureNew ? Icons.visibility : Icons.visibility_off),
                   onPressed: () => setState(() => _obscureNew = !_obscureNew),
                 ),
               ),
               obscureText: _obscureNew,
               textInputAction: TextInputAction.next,
               validator: (v) {
-                if (v == null || v.length < 8) {
-                  return 'Minimum 8 characters';
-                }
-                if (!RegExp(r'\d').hasMatch(v)) return 'Include at least one number';
-                if (!RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(v)) {
-                  return 'Include at least one symbol';
-                }
+                if (v == null || v.length < 8) return 'Minimum 8 characters';
                 return null;
               },
             ),
@@ -85,28 +100,38 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
               decoration: InputDecoration(
                 labelText: 'Confirm password',
                 suffixIcon: IconButton(
-                  icon: Icon(
-                      _obscureConfirm ? Icons.visibility : Icons.visibility_off),
+                  icon: Icon(_obscureConfirm
+                      ? Icons.visibility
+                      : Icons.visibility_off),
                   onPressed: () =>
                       setState(() => _obscureConfirm = !_obscureConfirm),
                 ),
               ),
               obscureText: _obscureConfirm,
               textInputAction: TextInputAction.done,
-              onFieldSubmitted: (_) => _submit(),
+              onFieldSubmitted: (_) => _submit(email),
               validator: (v) =>
                   v != _passwordCtrl.text ? 'Passwords do not match' : null,
             ),
             const SizedBox(height: 24),
             ElevatedButton(
-              onPressed: isLoading ? null : _submit,
+              onPressed: isLoading ? null : () => _submit(email),
               child: isLoading
                   ? const SizedBox(
                       height: 18,
                       width: 18,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Set password'),
+                  : const Text('Reset password'),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: isLoading || email.isEmpty
+                  ? null
+                  : () => ref
+                      .read(authProvider.notifier)
+                      .forgotPassword(email),
+              child: const Text('Resend code'),
             ),
           ],
         ),
@@ -114,10 +139,12 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
     );
   }
 
-  void _submit() {
+  void _submit(String email) {
     if (!_formKey.currentState!.validate()) return;
-    ref
-        .read(authProvider.notifier)
-        .confirmNewPassword(_passwordCtrl.text);
+    ref.read(authProvider.notifier).confirmForgotPassword(
+          email,
+          _codeCtrl.text.trim(),
+          _passwordCtrl.text,
+        );
   }
 }

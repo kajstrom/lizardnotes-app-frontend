@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/auth/screens/enter_code_and_password_screen.dart';
 import '../features/auth/screens/forgot_password_screen.dart';
 import '../features/auth/screens/login_screen.dart';
 import '../features/auth/screens/mfa_code_screen.dart';
@@ -20,6 +21,7 @@ abstract final class RouteNames {
   static const String mfaSetupVerify = '/login/mfa-setup/verify';
   static const String mfaCode = '/login/mfa-code';
   static const String forgotPassword = '/login/forgot-password';
+  static const String forgotPasswordConfirm = '/login/forgot-password/confirm';
   static const String app = '/app';
   static const String appFolders = '/app/folders';
   static const String appFolderNotes = '/app/folders/:folderId';
@@ -133,6 +135,13 @@ abstract final class AppRouter {
             GoRoute(
               path: 'forgot-password',
               builder: (context, state) => const ForgotPasswordScreen(),
+              routes: [
+                GoRoute(
+                  path: 'confirm',
+                  builder: (context, state) =>
+                      const EnterCodeAndPasswordScreen(),
+                ),
+              ],
             ),
           ],
         ),

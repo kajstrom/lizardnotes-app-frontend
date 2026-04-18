@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lizardnotes_app/features/auth/screens/login_screen.dart';
 import 'package:lizardnotes_app/features/folders/screens/folder_list_screen.dart';
@@ -14,9 +15,11 @@ void main() {
         final router = AppRouter.buildRouter(notifier);
 
         await tester.pumpWidget(
-          MaterialApp.router(
-            routerConfig: router,
-            theme: AppTheme.dark(),
+          ProviderScope(
+            child: MaterialApp.router(
+              routerConfig: router,
+              theme: AppTheme.dark(),
+            ),
           ),
         );
         await tester.pumpAndSettle();
@@ -39,9 +42,11 @@ void main() {
         final router = AppRouter.buildRouter(notifier);
 
         await tester.pumpWidget(
-          MaterialApp.router(
-            routerConfig: router,
-            theme: AppTheme.dark(),
+          ProviderScope(
+            child: MaterialApp.router(
+              routerConfig: router,
+              theme: AppTheme.dark(),
+            ),
           ),
         );
         await tester.pumpAndSettle();
