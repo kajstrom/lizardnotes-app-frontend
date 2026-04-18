@@ -1,12 +1,40 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:lizardnotes_app/api/api_client.dart';
 import 'package:lizardnotes_app/features/auth/screens/login_screen.dart';
+import 'package:lizardnotes_app/features/folders/models/folder.dart';
 import 'package:lizardnotes_app/features/folders/screens/folder_list_screen.dart';
 import 'package:lizardnotes_app/router/app_router.dart';
 import 'package:lizardnotes_app/theme/app_theme.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class MockApiClient extends Mock implements ApiClient {}
 
 void main() {
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
+
+  setUpAll(() {
+    registerFallbackValue(
+      Folder(
+        folderId: 'f',
+        name: 'F',
+        path: '/F',
+        createdAt: DateTime(2024),
+        updatedAt: DateTime(2024),
+      ),
+    );
+  });
+
+  MockApiClient stubClient() {
+    final client = MockApiClient();
+    when(() => client.getFolders()).thenAnswer((_) async => []);
+    return client;
+  }
+
   group('AppRouter redirects', () {
     testWidgets(
       'unauthenticated access to /app/folders redirects to /login',
@@ -16,6 +44,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
+            overrides: [apiClientProvider.overrideWithValue(stubClient())],
             child: MaterialApp.router(
               routerConfig: router,
               theme: AppTheme.dark(),
@@ -24,7 +53,6 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Navigate to a protected route.
         router.go(RouteNames.appFolders);
         await tester.pumpAndSettle();
 
@@ -43,6 +71,7 @@ void main() {
 
         await tester.pumpWidget(
           ProviderScope(
+            overrides: [apiClientProvider.overrideWithValue(stubClient())],
             child: MaterialApp.router(
               routerConfig: router,
               theme: AppTheme.dark(),
@@ -51,7 +80,6 @@ void main() {
         );
         await tester.pumpAndSettle();
 
-        // Explicitly navigate to /login — redirect should fire.
         router.go(RouteNames.login);
         await tester.pumpAndSettle();
 

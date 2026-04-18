@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/colour_tokens.dart';
+import '../folders/widgets/sidebar.dart';
 import 'providers/density_provider.dart';
 
 /// Whether the note-list column is currently visible.
@@ -99,12 +100,7 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
                       right: BorderSide(color: LnColors.lnBorder, width: 1),
                     ),
                   ),
-                  child: const Center(
-                    child: Text(
-                      'Sidebar',
-                      style: TextStyle(color: LnColors.lnText3, fontSize: 12),
-                    ),
-                  ),
+                  child: const Sidebar(),
                 ),
                 // ── Note list (animated) ───────────────────────────────────
                 AnimatedContainer(
