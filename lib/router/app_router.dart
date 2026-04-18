@@ -12,6 +12,8 @@ import '../features/folders/screens/folder_list_screen.dart';
 import '../features/notes/screens/editor_screen.dart';
 import '../features/notes/screens/note_list_screen.dart';
 import '../features/search/screens/search_screen.dart';
+import '../features/settings/screens/settings_screen.dart';
+import '../features/shell/app_shell.dart';
 
 /// Named route path constants. Use these everywhere instead of string literals.
 abstract final class RouteNames {
@@ -27,50 +29,7 @@ abstract final class RouteNames {
   static const String appFolderNotes = '/app/folders/:folderId';
   static const String appNote = '/app/notes/:noteId';
   static const String appSearch = '/app/search';
-}
-
-/// Placeholder desktop shell — three-column layout to be built later.
-class DesktopShell extends StatelessWidget {
-  const DesktopShell({super.key, required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Row(
-        children: [
-          const SizedBox(width: 220, child: Center(child: Text('Sidebar'))),
-          const VerticalDivider(width: 1),
-          Expanded(child: child),
-        ],
-      ),
-    );
-  }
-}
-
-/// Placeholder mobile shell — bottom-nav bar to be built later.
-class MobileShell extends StatelessWidget {
-  const MobileShell({super.key, required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: BottomNavigationBar(
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.folder), label: 'Folders'),
-          BottomNavigationBarItem(icon: Icon(Icons.search), label: 'Search'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
-      ),
-    );
-  }
+  static const String appSettings = '/app/settings';
 }
 
 abstract final class AppRouter {
@@ -146,13 +105,10 @@ abstract final class AppRouter {
           ],
         ),
         ShellRoute(
-          builder: (context, state, child) {
-            final width = MediaQuery.sizeOf(context).width;
-            if (width >= 600) {
-              return DesktopShell(child: child);
-            }
-            return MobileShell(child: child);
-          },
+          builder: (context, state, child) => AppShell(
+            location: state.uri.toString(),
+            child: child,
+          ),
           routes: [
             GoRoute(
               path: '/app',
@@ -176,6 +132,10 @@ abstract final class AppRouter {
                 GoRoute(
                   path: 'search',
                   builder: (context, state) => const SearchScreen(),
+                ),
+                GoRoute(
+                  path: 'settings',
+                  builder: (context, state) => const SettingsScreen(),
                 ),
               ],
             ),
