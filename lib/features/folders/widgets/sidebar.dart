@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../theme/colour_tokens.dart';
 import '../../../theme/text_styles.dart';
 import '../providers/folder_provider.dart';
+import '../../notes/providers/note_provider.dart';
 import 'folder_tree_tile.dart';
 
 // ---------------------------------------------------------------------------
@@ -280,12 +281,12 @@ class _SidebarFooter extends StatelessWidget {
   }
 }
 
-class _NewNoteButton extends StatefulWidget {
+class _NewNoteButton extends ConsumerStatefulWidget {
   @override
-  State<_NewNoteButton> createState() => _NewNoteButtonState();
+  ConsumerState<_NewNoteButton> createState() => _NewNoteButtonState();
 }
 
-class _NewNoteButtonState extends State<_NewNoteButton> {
+class _NewNoteButtonState extends ConsumerState<_NewNoteButton> {
   bool _hovered = false;
 
   @override
@@ -295,9 +296,13 @@ class _NewNoteButtonState extends State<_NewNoteButton> {
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
-        onTap: () {
-          // TODO: wire to note creation in step 2-9.
-          debugPrint('new note');
+        onTap: () async {
+          final folderId = ref.read(selectedFolderIdProvider);
+          if (folderId != null) {
+            await ref
+                .read(noteProvider.notifier)
+                .createNote(folderId, 'Untitled');
+          }
         },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 80),

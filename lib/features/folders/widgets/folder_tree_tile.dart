@@ -9,6 +9,7 @@ import '../../../theme/colour_tokens.dart';
 import '../../../theme/text_styles.dart';
 import '../models/folder.dart';
 import '../providers/folder_provider.dart';
+import '../../notes/providers/note_provider.dart';
 import 'delete_confirm_dialog.dart';
 import 'folder_context_menu.dart';
 import 'move_dialog.dart';
@@ -108,8 +109,9 @@ class _FolderTreeTileState extends ConsumerState<FolderTreeTile> {
             .read(folderProvider.notifier)
             .createFolder('New Folder', parentFolderId: widget.folder.folderId);
       case FolderMenuAction.newNote:
-        // TODO: wire to notes feature.
-        debugPrint('new note here: ${widget.folder.folderId}');
+        await ref
+            .read(noteProvider.notifier)
+            .createNote(widget.folder.folderId, 'Untitled');
       case FolderMenuAction.moveTo:
         await showMoveDialog(context: context, folder: widget.folder);
       case FolderMenuAction.delete:

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
 import '../features/folders/models/folder.dart';
+import '../features/notes/models/note.dart';
 
 final apiClientProvider = Provider<ApiClient>((_) => ApiClient());
 
@@ -81,6 +82,73 @@ class ApiClient {
       headers: await _headers(),
     );
     _assertSuccess(response, 'deleteFolder');
+  }
+
+  // ── Notes ─────────────────────────────────────────────────────────────────
+
+  Future<List<Note>> getNotes({String? folderId}) async {
+    final uri = folderId != null
+        ? _uri('/notes').replace(queryParameters: {'folderId': folderId})
+        : _uri('/notes');
+    final response = await http.get(uri, headers: await _headers());
+    _assertSuccess(response, 'getNotes');
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((e) => Note.fromJson(e as Map<String, dynamic>))
+        .toList();
+  }
+
+  Future<Note> createNote({
+    required String folderId,
+    required String title,
+  }) async {
+    final body = <String, dynamic>{
+      'folderId': folderId,
+      'title': title,
+      'content': '',
+    };
+    final response = await http.post(
+      _uri('/notes'),
+      headers: await _headers(),
+      body: jsonEncode(body),
+    );
+    _assertSuccess(response, 'createNote');
+    return Note.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<Note> getNote(String noteId) async {
+    final response =
+        await http.get(_uri('/notes/$noteId'), headers: await _headers());
+    _assertSuccess(response, 'getNote');
+    return Note.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<Note> updateNote(
+    String noteId, {
+    String? title,
+    String? content,
+    String? folderId,
+  }) async {
+    final body = <String, dynamic>{
+      'title': ?title,
+      'content': ?content,
+      'folderId': ?folderId,
+    };
+    final response = await http.put(
+      _uri('/notes/$noteId'),
+      headers: await _headers(),
+      body: jsonEncode(body),
+    );
+    _assertSuccess(response, 'updateNote');
+    return Note.fromJson(jsonDecode(response.body) as Map<String, dynamic>);
+  }
+
+  Future<void> deleteNote(String noteId) async {
+    final response = await http.delete(
+      _uri('/notes/$noteId'),
+      headers: await _headers(),
+    );
+    _assertSuccess(response, 'deleteNote');
   }
 }
 

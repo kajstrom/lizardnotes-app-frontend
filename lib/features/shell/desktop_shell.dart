@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/colour_tokens.dart';
 import '../folders/widgets/sidebar.dart';
+import '../notes/widgets/note_list_panel.dart';
 import 'providers/density_provider.dart';
 
 /// Whether the note-list column is currently visible.
@@ -120,12 +121,7 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
                           )
                         : null,
                   ),
-                  child: const Center(
-                    child: Text(
-                      'Note List',
-                      style: TextStyle(color: LnColors.lnText3, fontSize: 12),
-                    ),
-                  ),
+                  child: const NoteListPanel(),
                 ),
                 // ── Editor column (flex: 1) ────────────────────────────────
                 Expanded(

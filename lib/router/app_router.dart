@@ -121,7 +121,9 @@ abstract final class AppRouter {
                   routes: [
                     GoRoute(
                       path: ':folderId',
-                      builder: (context, state) => const NoteListScreen(),
+                      builder: (context, state) => NoteListScreen(
+                        folderId: state.pathParameters['folderId']!,
+                      ),
                     ),
                   ],
                 ),
