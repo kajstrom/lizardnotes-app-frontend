@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LizardNotes — Mobile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="auth-mobile.css" />
+  <style>
+    body { background: #0f0f10; overflow: auto; }
+    #root { height: auto; min-height: 100vh; }
+    .ln-mobile-heading {
+      text-align: center;
+      padding: 32px 20px 0;
+    }
+    .ln-mobile-heading h1 {
+      font-family: var(--ln-font-sans);
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      color: var(--ln-text);
+      margin: 0 0 6px;
+    }
+    .ln-mobile-heading p {
+      font-family: var(--ln-font-mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--ln-text3);
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script type="text/babel" src="icons.jsx"></script>
+  <script type="text/babel">
+const I = window.LN_ICONS;
+
+function StatusBar() {
+  return (
+    <div className="ln-statusbar">
+      <span style={{fontWeight: 500}}>9:41</span>
+      <span className="ln-status-icons">
+        <svg width="14" height="10" viewBox="0 0 14 10" fill="currentColor"><circle cx="2" cy="8" r="1.3"/><circle cx="6" cy="6" r="1.3"/><circle cx="10" cy="4" r="1.3"/></svg>
+        <svg width="14" height="10" viewBox="0 0 14 10" fill="none"><path d="M1 5 Q7 -1 13 5" stroke="currentColor" strokeWidth="1.2" fill="none"/><circle cx="7" cy="8" r="1" fill="currentColor"/></svg>
+        <svg width="18" height="10" viewBox="0 0 18 10" fill="none"><rect x="0.5" y="1" width="14" height="8" rx="1.5" stroke="currentColor" strokeWidth="1"/><rect x="2" y="2.5" width="9" height="5" fill="currentColor"/><rect x="15" y="3.5" width="2" height="3" fill="currentColor"/></svg>
+      </span>
+    </div>
+  );
+}
+
+function BottomNav({current}) {
+  const items = [
+    { id: "folders", label: "Folders", icon: <I.Folder size={20}/> },
+    { id: "search", label: "Search", icon: <I.Search size={20}/> },
+    { id: "settings", label: "Settings", icon: (
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="10" cy="10" r="2.5" stroke="currentColor" strokeWidth="1.3"/>
+        <path d="M10 2v2.5M10 15.5V18M18 10h-2.5M4.5 10H2M15.3 4.7l-1.8 1.8M6.5 13.5l-1.8 1.8M15.3 15.3l-1.8-1.8M6.5 6.5L4.7 4.7" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
+      </svg>
+    )},
+  ];
+  return (
+    <div className="ln-droid-nav">
+      {items.map((it) => (
+        <button key={it.id} className="ln-droid-nav-btn" data-active={it.id === current}>
+          {it.icon}
+          <span>{it.label}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Droid({label, children}) {
+  return (
+    <div>
+      <div className="ln-droid">
+        <div className="ln-droid-screen">
+          {children}
+          <div className="ln-droid-gesture"/>
+        </div>
+      </div>
+      <div className="ln-mobile-label">{label}</div>
+    </div>
+  );
+}
+
+// ──────── Screen 1: Folder list (root) ────────
+function FolderListScreen() {
+  const folders = [
+    { name: "Work", sub: "3 subfolders · 8 notes" },
+    { name: "Personal", sub: "2 subfolders · 4 notes" },
+    { name: "Ideas", sub: "2 notes" },
+    { name: "Archive", sub: "1 note" },
+  ];
+  return (
+    <Droid label="Folder list · root">
+      <StatusBar/>
+      <div className="ln-droid-topbar">
+        <div className="ln-droid-title">LizardNotes</div>
+        <button className="ln-icon-btn"><I.Search size={16}/></button>
+        <button className="ln-icon-btn"><I.Dots /></button>
+      </div>
+      <div className="ln-droid-content">
+        {folders.map((f) => (
+          <div key={f.name} className="ln-droid-row">
+            <span className="ln-droid-row-icon"><I.Folder size={18}/></span>
+            <div className="ln-droid-row-body">
+              <div className="ln-droid-row-title">{f.name}</div>
+              <div className="ln-droid-row-sub">{f.sub}</div>
+            </div>
+            <span className="ln-droid-chev"><I.Chevron size={14}/></span>
+          </div>
+        ))}
+      </div>
+      <button className="ln-fab"><I.Plus size={18}/></button>
+      <BottomNav current="folders"/>
+    </Droid>
+  );
+}
+
+// ──────── Screen 2: Note list with bottom sheet open ────────
+function NoteListScreen() {
+  const notes = [
+    { t: "Kickoff notes — Atlas migration", p: "Migration plan for the Atlas service. Owners, milestones, and risk register below.", d: "2h ago" },
+    { t: "Risk register", p: "Known risks, owners, and mitigations for the Atlas migration.", d: "3d ago" },
+    { t: "Standup — Apr 16", p: "Shadow cluster is green. Dual-write starts Monday.", d: "2d ago" },
+  ];
+  return (
+    <Droid label="Note list · bottom sheet">
+      <StatusBar/>
+      <div className="ln-droid-topbar">
+        <button className="ln-droid-back">‹ Projects</button>
+        <div className="ln-droid-title" data-center="true">Atlas migration</div>
+        <button className="ln-icon-btn"><I.Dots /></button>
+      </div>
+      <div className="ln-droid-note-meta">3 notes · sorted by modified</div>
+      <div className="ln-droid-content">
+        {notes.map((n, i) => (
+          <div key={i} className="ln-droid-note-row">
+            <div className="ln-droid-note-title">{n.t}</div>
+            <div className="ln-droid-note-preview">{n.p}</div>
+            <div className="ln-droid-note-date">{n.d}</div>
+          </div>
+        ))}
+      </div>
+      <BottomNav current="folders"/>
+      <div className="ln-droid-sheet-wrap">
+        <div className="ln-droid-sheet">
+          <div className="ln-droid-sheet-handle"/>
+          <div className="ln-droid-sheet-item"><I.Rename/> Rename</div>
+          <div className="ln-droid-sheet-item"><I.Move/> Move to folder</div>
+          <div className="ln-droid-sheet-item"><I.Link/> Copy link</div>
+          <div className="ln-droid-sheet-item" data-variant="danger"><I.Trash/> Delete</div>
+        </div>
+      </div>
+    </Droid>
+  );
+}
+
+// ──────── Screen 3: Editor with keyboard + format toolbar ────────
+function EditorScreen() {
+  return (
+    <Droid label="Editor · keyboard + format">
+      <StatusBar/>
+      <div className="ln-droid-topbar">
+        <button className="ln-droid-back">‹ Atlas</button>
+        <div className="ln-droid-title" data-center="true" style={{fontSize: 12, fontWeight: 500, color: "var(--ln-text2)", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis"}}>Kickoff notes</div>
+        <button className="ln-icon-btn"><I.Dots /></button>
+      </div>
+      <div className="ln-droid-content">
+        <div className="ln-droid-editor">
+          <h1>Kickoff notes — Atlas migration</h1>
+          <div className="ln-note-meta"><span>Modified 2h ago · 4 paragraphs</span></div>
+          <p>This is the working doc for the Atlas migration. We'll track the plan here and link out to tickets for execution.</p>
+          <p style={{fontSize: 15, fontWeight: 600, margin: "14px 0 6px", letterSpacing: "-0.01em"}}>Milestones</p>
+          <ul>
+            <li>Stand up the shadow cluster (week 1)</li>
+            <li>Dual-write from primary (weeks 2–3)</li>
+            <li>Cut read traffic over in 10% increments</li>
+          </ul>
+        </div>
+      </div>
+      <div className="ln-droid-attach">
+        <div className="ln-chip" data-state="complete" style={{fontSize: 11}}>
+          <I.Check size={10}/> atlas-architecture.png
+        </div>
+        <div className="ln-chip-add" style={{fontSize: 11}}>
+          <I.Plus size={10}/> attach
+        </div>
+      </div>
+      <div className="ln-droid-fmt">
+        <button className="ln-fmt-btn" style={{fontWeight: 700}}>B</button>
+        <button className="ln-fmt-btn" style={{fontStyle: "italic"}}>I</button>
+        <span className="ln-fmt-divider"/>
+        <button className="ln-fmt-btn">H1</button>
+        <button className="ln-fmt-btn">H2</button>
+        <button className="ln-fmt-btn">H3</button>
+        <span className="ln-fmt-divider"/>
+        <button className="ln-fmt-btn">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="3" cy="4" r="1" fill="currentColor"/><circle cx="3" cy="10" r="1" fill="currentColor"/><path d="M6 4h6M6 10h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>
+        </button>
+        <button className="ln-fmt-btn"><I.Link size={14}/></button>
+      </div>
+      <div className="ln-droid-keyboard"/>
+    </Droid>
+  );
+}
+
+function App() {
+  return (
+    <div>
+      <div className="ln-mobile-heading">
+        <h1>LizardNotes — Mobile</h1>
+        <p>Android navigation stack</p>
+      </div>
+      <div className="ln-mobile-page" style={{padding: "28px 20px 60px"}}>
+        <div className="ln-mobile-grid">
+          <FolderListScreen/>
+          <NoteListScreen/>
+          <EditorScreen/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+  </script>
+</body>
+</html>
