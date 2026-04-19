@@ -1,0 +1,67 @@
+{
+  "_instructions": [
+    "1. Replace every <ACCOUNT_ID> with your 12-digit AWS account ID.",
+    "2. Replace <ROLE_NAME> with your chosen role name (e.g. lizardnotes-frontend-deploy).",
+    "3. Replace <BUCKET_ARN> with the ARN of the frontend S3 bucket",
+    "   (e.g. arn:aws:s3:::lizardnotes-frontend-prod).",
+    "4. Replace <DISTRIBUTION_ARN> with the ARN of the CloudFront distribution",
+    "   (e.g. arn:aws:cloudfront::<ACCOUNT_ID>:distribution/ABCDEFGHIJ).",
+    "5. See README.md (CI/CD section) for the step-by-step console instructions."
+  ],
+
+  "TrustPolicy": {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "Federated": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/token.actions.githubusercontent.com"
+        },
+        "Action": "sts:AssumeRoleWithWebIdentity",
+        "Condition": {
+          "StringEquals": {
+            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
+            "token.actions.githubusercontent.com:sub": "repo:kajstrom/lizardnotes-app-frontend:ref:refs/heads/master"
+          }
+        }
+      }
+    ]
+  },
+
+  "PermissionPolicy": {
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Sid": "ReadSSMParameters",
+        "Effect": "Allow",
+        "Action": "ssm:GetParameter",
+        "Resource": [
+          "arn:aws:ssm:*:<ACCOUNT_ID>:parameter/lizardnotes/apigateway/apiUrl",
+          "arn:aws:ssm:*:<ACCOUNT_ID>:parameter/lizardnotes/cognito/userPoolId",
+          "arn:aws:ssm:*:<ACCOUNT_ID>:parameter/lizardnotes/cognito/appClientId",
+          "arn:aws:ssm:*:<ACCOUNT_ID>:parameter/lizardnotes/frontend/bucketName",
+          "arn:aws:ssm:*:<ACCOUNT_ID>:parameter/lizardnotes/frontend/distributionId"
+        ]
+      },
+      {
+        "Sid": "WriteS3Bucket",
+        "Effect": "Allow",
+        "Action": [
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ],
+        "Resource": [
+          "<BUCKET_ARN>",
+          "<BUCKET_ARN>/*"
+        ]
+      },
+      {
+        "Sid": "InvalidateCloudFront",
+        "Effect": "Allow",
+        "Action": "cloudfront:CreateInvalidation",
+        "Resource": "<DISTRIBUTION_ARN>"
+      }
+    ]
+  }
+}
