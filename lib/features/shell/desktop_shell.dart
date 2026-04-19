@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../theme/colour_tokens.dart';
 import '../folders/widgets/sidebar.dart';
 import '../notes/widgets/note_list_panel.dart';
+import '../search/providers/search_provider.dart';
+import '../search/widgets/search_modal.dart';
 import 'providers/density_provider.dart';
 
 /// Whether the note-list column is currently visible.
@@ -60,7 +62,13 @@ class _DesktopShellState extends ConsumerState<DesktopShell> {
   }
 
   void _openSearch(BuildContext context) {
-    // TODO: show SearchModal when implemented.
+    ref.read(searchProvider.notifier).open();
+    showDialog<void>(
+      context: context,
+      barrierColor: const Color(0x8C000000),
+      barrierDismissible: true,
+      builder: (_) => const SearchModal(),
+    );
   }
 
   @override

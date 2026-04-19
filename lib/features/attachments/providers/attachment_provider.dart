@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../../api/api_client.dart';
 import '../models/attachment.dart';
+import '../../search/providers/attachment_registry_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Injectable seams (overridden in tests)
@@ -142,6 +143,7 @@ class AttachmentNotifier extends Notifier<AttachmentState> {
         loading: false,
         items: list.map((a) => AttachmentItem(attachment: a)).toList(),
       );
+      ref.read(attachmentRegistryProvider.notifier).register(_noteId, list);
     } catch (e) {
       state = state.copyWith(loading: false, errorMessage: e.toString());
     }

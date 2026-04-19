@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../theme/colour_tokens.dart';
 import '../../../theme/text_styles.dart';
+import '../../search/providers/search_provider.dart';
+import '../../search/widgets/search_modal.dart';
 import '../providers/folder_provider.dart';
 import '../../notes/providers/note_provider.dart';
 import 'folder_tree_tile.dart';
@@ -142,10 +144,17 @@ class _SearchPillState extends State<_SearchPill> {
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: () {
-          // TODO: wire to DesktopShell ⌘K handler.
-        },
+      child: Consumer(
+        builder: (ctx, ref, _) => GestureDetector(
+          onTap: () {
+            ref.read(searchProvider.notifier).open();
+            showDialog<void>(
+              context: ctx,
+              barrierColor: const Color(0x8C000000),
+              barrierDismissible: true,
+              builder: (_) => const SearchModal(),
+            );
+          },
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 100),
           height: 30,
@@ -183,8 +192,9 @@ class _SearchPillState extends State<_SearchPill> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }
 
 // ---------------------------------------------------------------------------
