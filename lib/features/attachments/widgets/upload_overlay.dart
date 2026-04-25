@@ -219,57 +219,79 @@ class _UploadOverlayState extends ConsumerState<UploadOverlay> {
     final titleColor = _dragOver ? LnColors.lnAccent2 : LnColors.lnText;
     final title = _dragOver ? 'Drop to attach' : 'Drag and drop or browse';
 
-    return InkWell(
-      onTap: _pickFiles,
-      child: Container(
-        height: 120,
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: CustomPaint(
-          painter: _DashedRectPainter(color: borderColor),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-            child: Stack(
-              children: [
-                if (kIsWeb)
-                  Positioned.fill(
-                    child: DropzoneView(
-                      operation: DragOperation.copy,
-                      onCreated: (c) => _dropzone = c,
-                      onHover: () {
-                        if (!_dragOver) {
-                          setState(() => _dragOver = true);
-                        }
-                      },
-                      onLeave: () {
-                        if (_dragOver) setState(() => _dragOver = false);
-                      },
-                      onDropFile: _handleDrop,
-                    ),
-                  ),
-                IgnorePointer(
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          title,
-                          style: LnTextStyles.modalTitle(color: titleColor),
-                        ),
-                        const SizedBox(height: 6),
-                        Text(
-                          'Up to 25 MB each · PDF, PNG, JPG, MD, XLSX',
-                          style: LnTextStyles.timestamp(),
-                        ),
-                      ],
-                    ),
+    return Container(
+      height: 120,
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: CustomPaint(
+        painter: _DashedRectPainter(color: borderColor),
+        child: Stack(
+          children: [
+            if (kIsWeb)
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 0,
+                bottom: 32,
+                child: DropzoneView(
+                  operation: DragOperation.copy,
+                  onCreated: (c) => _dropzone = c,
+                  onHover: () {
+                    if (!_dragOver) {
+                      setState(() => _dragOver = true);
+                    }
+                  },
+                  onLeave: () {
+                    if (_dragOver) setState(() => _dragOver = false);
+                  },
+                  onDropFile: _handleDrop,
+                ),
+              ),
+            IgnorePointer(
+              child: Padding(
+                padding: const EdgeInsets.only(top: 22),
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: LnTextStyles.modalTitle(color: titleColor),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Up to 25 MB each · PDF, PNG, JPG, MD, XLSX',
+                        style: LnTextStyles.timestamp(),
+                      ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 4,
+              height: 28,
+              child: Center(
+                child: TextButton(
+                  onPressed: _pickFiles,
+                  style: TextButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                    minimumSize: const Size(0, 24),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                  child: const Text(
+                    'Browse files',
+                    style: TextStyle(color: LnColors.lnAccent2, fontSize: 12),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
