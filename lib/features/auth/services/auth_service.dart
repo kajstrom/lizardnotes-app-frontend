@@ -25,6 +25,13 @@ abstract class AuthService {
       String email, String code, String newPassword);
   Future<void> signOut();
   Future<bool> tryRestoreSession();
+
+  /// Returns a valid access JWT, refreshing the session if needed.
+  ///
+  /// Returns `null` if no session is available or the refresh token has
+  /// expired/been rejected — callers should treat this as a forced sign-out.
+  Future<String?> getValidAccessToken();
+
   CognitoUserSession? get currentSession;
 }
 
@@ -138,19 +145,30 @@ class CognitoAuthService implements AuthService {
     final accessJwt = prefs.getString(_kAccessToken);
     final refreshStr = prefs.getString(_kRefreshToken);
 
-    if (username == null || idJwt == null || accessJwt == null) return false;
+    if (username == null) return false;
 
     _user = CognitoUser(username, _pool);
     final refreshToken =
         refreshStr != null ? CognitoRefreshToken(refreshStr) : null;
-    _session = CognitoUserSession(
-      CognitoIdToken(idJwt),
-      CognitoAccessToken(accessJwt),
-      refreshToken: refreshToken,
-    );
 
-    if (_session!.isValid()) return true;
+    // The CognitoIdToken/CognitoAccessToken constructors parse the JWT and
+    // throw on malformed input — don't let a corrupt cached token abort the
+    // whole restore (the refresh token may still be good).
+    if (idJwt != null && accessJwt != null) {
+      try {
+        _session = CognitoUserSession(
+          CognitoIdToken(idJwt),
+          CognitoAccessToken(accessJwt),
+          refreshToken: refreshToken,
+        );
+      } catch (_) {
+        _session = null;
+      }
+    }
 
+    if (await getValidAccessToken() != null) return true;
+
+    // Cached id/access tokens were unusable; fall back to a refresh-only path.
     if (refreshToken != null) {
       try {
         _session = await _user!.refreshSession(refreshToken);
@@ -159,10 +177,51 @@ class CognitoAuthService implements AuthService {
           return true;
         }
       } catch (_) {
-        await _clearPersisted();
+        // fall through to clear
       }
     }
+    _session = null;
+    await _clearPersisted();
     return false;
+  }
+
+  @override
+  Future<String?> getValidAccessToken() async {
+    // isValid() parses the JWT and can throw on malformed tokens (e.g. after
+    // a manual localStorage edit). Treat a throw as "not valid" and fall
+    // through to refresh rather than bubbling up.
+    bool sessionValid = false;
+    if (_session != null) {
+      try {
+        sessionValid = _session!.isValid();
+      } catch (_) {
+        sessionValid = false;
+      }
+    }
+    if (sessionValid) {
+      return _session!.getAccessToken().getJwtToken();
+    }
+
+    final refreshToken = _session?.getRefreshToken();
+    if (_user == null || refreshToken == null) {
+      _session = null;
+      await _clearPersisted();
+      return null;
+    }
+
+    try {
+      _session = await _user!.refreshSession(refreshToken);
+      if (_session == null) {
+        await _clearPersisted();
+        return null;
+      }
+      await _persist();
+      return _session!.getAccessToken().getJwtToken();
+    } catch (_) {
+      _session = null;
+      await _clearPersisted();
+      return null;
+    }
   }
 
   Future<void> _persist() async {

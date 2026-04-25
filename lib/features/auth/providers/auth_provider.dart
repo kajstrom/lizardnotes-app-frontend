@@ -5,6 +5,10 @@ import '../../../router/app_router.dart';
 import '../services/auth_service.dart';
 
 enum AuthStatus {
+  /// Initial state on app start while we attempt to restore a persisted
+  /// session. The router treats this as "not yet decided" — no redirect to
+  /// login — and [App] renders a splash overlay.
+  restoring,
   unauthenticated,
   loading,
   authenticated,
@@ -71,7 +75,7 @@ class AuthNotifier extends Notifier<AuthState> {
   AuthService get _service => ref.read(authServiceProvider);
 
   @override
-  AuthState build() => const AuthState();
+  AuthState build() => const AuthState(status: AuthStatus.restoring);
 
   /// Initiates SRP sign-in. Updates [state.status] based on the Cognito
   /// challenge response.
@@ -208,6 +212,18 @@ class AuthNotifier extends Notifier<AuthState> {
     AppRouter.isLoggedIn.value = false;
   }
 
+  /// Called when an API request discovers the session is no longer valid
+  /// (refresh token rejected, or the backend returned 401). Clears persisted
+  /// tokens and flips the router back to the login flow.
+  Future<void> handleSessionExpired() async {
+    if (state.status == AuthStatus.unauthenticated && state.session == null) {
+      return;
+    }
+    await _service.signOut();
+    state = const AuthState();
+    AppRouter.isLoggedIn.value = false;
+  }
+
   /// Called on app start to restore a persisted session.
   Future<void> restoreSession() async {
     final restored = await _service.tryRestoreSession();
@@ -217,6 +233,8 @@ class AuthNotifier extends Notifier<AuthState> {
         session: _service.currentSession,
       );
       _syncLoginNotifier();
+    } else if (state.status == AuthStatus.restoring) {
+      state = state.copyWith(status: AuthStatus.unauthenticated);
     }
   }
 

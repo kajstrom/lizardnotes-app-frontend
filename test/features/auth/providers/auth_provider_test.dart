@@ -84,6 +84,9 @@ class FakeAuthService implements AuthService {
   Future<bool> tryRestoreSession() async => false;
 
   @override
+  Future<String?> getValidAccessToken() async => null;
+
+  @override
   CognitoUserSession? get currentSession => null;
 }
 

@@ -2,24 +2,42 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
 import '../features/attachments/models/attachment.dart';
+import '../features/auth/providers/auth_provider.dart';
+import '../features/auth/services/auth_service.dart';
 import '../features/folders/models/folder.dart';
 import '../features/notes/models/note.dart';
 
-final apiClientProvider = Provider<ApiClient>((_) => ApiClient());
+final apiClientProvider = Provider<ApiClient>((ref) {
+  return ApiClient(
+    authService: ref.read(authServiceProvider),
+    onSessionExpired: () =>
+        ref.read(authProvider.notifier).handleSessionExpired(),
+  );
+});
 
 class ApiClient {
-  static const _kAccessToken = 'auth_access_token';
+  ApiClient({
+    required AuthService authService,
+    required Future<void> Function() onSessionExpired,
+  })  : _authService = authService,
+        _onSessionExpired = onSessionExpired;
+
+  final AuthService _authService;
+  final Future<void> Function() _onSessionExpired;
+  bool _expiredHandled = false;
 
   Future<Map<String, String>> _headers() async {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString(_kAccessToken);
+    final token = await _authService.getValidAccessToken();
+    if (token == null) {
+      await _notifyExpired();
+      throw const AuthExpiredException();
+    }
     return {
       'Content-Type': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
+      'Authorization': 'Bearer $token',
     };
   }
 
@@ -27,7 +45,18 @@ class ApiClient {
 
   void _assertSuccess(http.Response response, String context) {
     if (response.statusCode >= 200 && response.statusCode < 300) return;
+    if (response.statusCode == 401) {
+      // Fire-and-forget: surface as AuthExpiredException for the caller.
+      _notifyExpired();
+      throw const AuthExpiredException();
+    }
     throw ApiException(response.statusCode, response.body, context);
+  }
+
+  Future<void> _notifyExpired() async {
+    if (_expiredHandled) return;
+    _expiredHandled = true;
+    await _onSessionExpired();
   }
 
   // ── Folders ──────────────────────────────────────────────────────────────
@@ -224,4 +253,14 @@ class ApiException implements Exception {
 
   @override
   String toString() => 'ApiException($context $statusCode): $body';
+}
+
+/// Thrown when the access token is missing/expired and could not be refreshed,
+/// or when the API responds with 401. Callers can usually ignore it — the
+/// router will redirect to the login flow via [AuthNotifier.handleSessionExpired].
+class AuthExpiredException implements Exception {
+  const AuthExpiredException();
+
+  @override
+  String toString() => 'AuthExpiredException';
 }
