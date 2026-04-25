@@ -76,9 +76,18 @@ jobs:
             --delete \
             --cache-control "public,max-age=31536000,immutable"
 
-          aws s3 cp build/web/index.html \
-            s3://$BUCKET_NAME/index.html \
-            --cache-control "no-cache,no-store,must-revalidate"
+          for f in index.html flutter_service_worker.js flutter_bootstrap.js flutter.js main.dart.js manifest.json version.json; do
+            if [ -f "build/web/$f" ]; then
+              case "$f" in
+                *.json) ct="application/json" ;;
+                *.js)   ct="application/javascript" ;;
+                *.html) ct="text/html" ;;
+              esac
+              aws s3 cp "build/web/$f" "s3://$BUCKET_NAME/$f" \
+                --cache-control "no-cache,no-store,must-revalidate" \
+                --content-type "$ct"
+            fi
+          done
 
       - name: Invalidate CloudFront
         run: |
