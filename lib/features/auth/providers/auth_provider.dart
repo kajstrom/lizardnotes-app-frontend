@@ -1,6 +1,7 @@
 import 'package:amazon_cognito_identity_dart_2/cognito.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../api/api_client.dart';
 import '../../../router/app_router.dart';
 import '../services/auth_service.dart';
 
@@ -225,8 +226,19 @@ class AuthNotifier extends Notifier<AuthState> {
   }
 
   /// Called on app start to restore a persisted session.
+  ///
+  /// A 10-second timeout protects against Cognito being unreachable — without
+  /// it the splash overlay blocks indefinitely. On timeout we fall through to
+  /// the login screen; cached tokens stay on disk so the next launch retries.
   Future<void> restoreSession() async {
-    final restored = await _service.tryRestoreSession();
+    bool restored;
+    try {
+      restored = await _service
+          .tryRestoreSession()
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {
+      restored = false;
+    }
     if (restored) {
       state = state.copyWith(
         status: AuthStatus.authenticated,
@@ -243,7 +255,14 @@ class AuthNotifier extends Notifier<AuthState> {
   // ---------------------------------------------------------------------------
 
   void _syncLoginNotifier() {
-    AppRouter.isLoggedIn.value = state.status == AuthStatus.authenticated;
+    final loggedIn = state.status == AuthStatus.authenticated;
+    AppRouter.isLoggedIn.value = loggedIn;
+    if (loggedIn) {
+      // Re-arm the API client's expired-handler so a future genuine 401 still
+      // routes through handleSessionExpired() (the flag is sticky for the
+      // lifetime of the provider otherwise).
+      ref.read(apiClientProvider).resetExpiredHandled();
+    }
   }
 
   AuthStatus _statusFromResult(SignInResult result) {

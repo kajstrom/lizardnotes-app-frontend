@@ -32,6 +32,11 @@ abstract class AuthService {
   /// expired/been rejected — callers should treat this as a forced sign-out.
   Future<String?> getValidAccessToken();
 
+  /// Forces a refresh regardless of local validity. Used after a 401 to
+  /// recover from clock skew or in-flight expiry where the local token still
+  /// looks valid but the backend rejected it.
+  Future<String?> forceRefresh();
+
   CognitoUserSession? get currentSession;
 }
 
@@ -45,6 +50,12 @@ class CognitoAuthService implements AuthService {
   final CognitoUserPool _pool;
   CognitoUser? _user;
   CognitoUserSession? _session;
+  Future<String?>? _pendingRefresh;
+
+  /// Refresh tokens proactively when the access token has less than this much
+  /// life left, to close the in-flight expiry race (the token is valid when
+  /// we attach it, but expires by the time API Gateway validates it).
+  static const _refreshBuffer = Duration(seconds: 60);
 
   static const _kIdToken = 'auth_id_token';
   static const _kAccessToken = 'auth_access_token';
@@ -187,21 +198,25 @@ class CognitoAuthService implements AuthService {
 
   @override
   Future<String?> getValidAccessToken() async {
-    // isValid() parses the JWT and can throw on malformed tokens (e.g. after
-    // a manual localStorage edit). Treat a throw as "not valid" and fall
-    // through to refresh rather than bubbling up.
-    bool sessionValid = false;
-    if (_session != null) {
-      try {
-        sessionValid = _session!.isValid();
-      } catch (_) {
-        sessionValid = false;
-      }
-    }
-    if (sessionValid) {
+    if (_isSessionValid(withBuffer: true)) {
       return _session!.getAccessToken().getJwtToken();
     }
+    return _sharedRefresh();
+  }
 
+  @override
+  Future<String?> forceRefresh() => _sharedRefresh();
+
+  /// Coalesces concurrent refresh attempts. Without this, parallel API calls
+  /// (folders + notes + auth/me on app start) all see an expired token and
+  /// each fire `refreshSession()` — the responses race against `_persist()`
+  /// and any one failure clears the session for everyone.
+  Future<String?> _sharedRefresh() {
+    return _pendingRefresh ??=
+        _refresh().whenComplete(() => _pendingRefresh = null);
+  }
+
+  Future<String?> _refresh() async {
     final refreshToken = _session?.getRefreshToken();
     if (_user == null || refreshToken == null) {
       _session = null;
@@ -222,6 +237,23 @@ class CognitoAuthService implements AuthService {
       await _clearPersisted();
       return null;
     }
+  }
+
+  bool _isSessionValid({bool withBuffer = false}) {
+    if (_session == null) return false;
+    // isValid() parses the JWT and can throw on malformed tokens (e.g. after
+    // a manual localStorage edit). Treat a throw as "not valid" and fall
+    // through to refresh rather than bubbling up.
+    try {
+      if (!_session!.isValid()) return false;
+    } catch (_) {
+      return false;
+    }
+    if (!withBuffer) return true;
+    final expSeconds = _session!.getAccessToken().getExpiration();
+    final expiresAt =
+        DateTime.fromMillisecondsSinceEpoch(expSeconds * 1000, isUtc: true);
+    return expiresAt.isAfter(DateTime.now().toUtc().add(_refreshBuffer));
   }
 
   Future<void> _persist() async {

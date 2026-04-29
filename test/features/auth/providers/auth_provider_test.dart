@@ -11,11 +11,15 @@ import 'package:lizardnotes_app/features/auth/services/auth_service.dart';
 class FakeAuthService implements AuthService {
   SignInResult? _nextSignInResult;
   Object? _nextError;
+  Object? _restoreError;
+  bool _restoreReturns = false;
   final String _totpUri =
       'otpauth://totp/LizardNotes:test@example.com?secret=ABCDEF&issuer=LizardNotes';
 
   void queueResult(SignInResult r) => _nextSignInResult = r;
   void queueError(Object e) => _nextError = e;
+  void queueRestoreError(Object e) => _restoreError = e;
+  void queueRestoreSuccess() => _restoreReturns = true;
 
   T _consumeOrThrow<T>(T value) {
     if (_nextError != null) {
@@ -81,10 +85,20 @@ class FakeAuthService implements AuthService {
   Future<void> signOut() async {}
 
   @override
-  Future<bool> tryRestoreSession() async => false;
+  Future<bool> tryRestoreSession() async {
+    if (_restoreError != null) {
+      final e = _restoreError!;
+      _restoreError = null;
+      throw e;
+    }
+    return _restoreReturns;
+  }
 
   @override
   Future<String?> getValidAccessToken() async => null;
+
+  @override
+  Future<String?> forceRefresh() async => null;
 
   @override
   CognitoUserSession? get currentSession => null;
@@ -235,6 +249,32 @@ void main() {
       final state = container.read(authProvider);
       expect(state.status, AuthStatus.requiresMfaSetup);
       expect(state.totpSecretUri, startsWith('otpauth://totp/'));
+    });
+  });
+
+  group('AuthNotifier.restoreSession', () {
+    test('restore failure clears restoring state', () async {
+      final svc = FakeAuthService(); // tryRestoreSession returns false
+      final container = _makeContainer(svc);
+      addTearDown(container.dispose);
+
+      await container.read(authProvider.notifier).restoreSession();
+
+      expect(container.read(authProvider).status, AuthStatus.unauthenticated);
+    });
+
+    test('restore exception is caught — falls through to unauthenticated',
+        () async {
+      // Mirrors the Cognito-unreachable case: tryRestoreSession throws (or
+      // times out). The notifier should not stay stuck in `restoring`.
+      final svc = FakeAuthService()
+        ..queueRestoreError(Exception('network unreachable'));
+      final container = _makeContainer(svc);
+      addTearDown(container.dispose);
+
+      await container.read(authProvider.notifier).restoreSession();
+
+      expect(container.read(authProvider).status, AuthStatus.unauthenticated);
     });
   });
 
