@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -89,6 +90,7 @@ class _MfaCodeScreenState extends ConsumerState<MfaCodeScreen> {
 
   void _submit(String code) {
     if (code.length != 6) return;
+    TextInput.finishAutofillContext();
     ref.read(authProvider.notifier).confirmMfaCode(code);
   }
 }

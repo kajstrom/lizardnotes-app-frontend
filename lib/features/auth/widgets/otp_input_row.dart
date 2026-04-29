@@ -102,14 +102,16 @@ class _OtpInputRowState extends State<OtpInputRow> {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        for (var i = 0; i < _length; i++) ...[
-          _buildCell(i),
-          if (i < _length - 1) const SizedBox(width: 8),
+    return AutofillGroup(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (var i = 0; i < _length; i++) ...[
+            _buildCell(i),
+            if (i < _length - 1) const SizedBox(width: 8),
+          ],
         ],
-      ],
+      ),
     );
   }
 
@@ -123,6 +125,7 @@ class _OtpInputRowState extends State<OtpInputRow> {
         focusNode: _focusNodes[index],
         textAlign: TextAlign.center,
         keyboardType: TextInputType.number,
+        autofillHints: const [AutofillHints.oneTimeCode],
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
           LengthLimitingTextInputFormatter(1),

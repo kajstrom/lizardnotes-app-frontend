@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -54,7 +55,8 @@ class _EnterCodeAndPasswordScreenState
           'Check your inbox and enter the code below with your new password.',
       child: Form(
         key: _formKey,
-        child: Column(
+        child: AutofillGroup(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AuthInfoBox(
@@ -82,6 +84,7 @@ class _EnterCodeAndPasswordScreenState
                 ),
                 style: const TextStyle(fontSize: 14, color: LnColors.lnText),
                 keyboardType: TextInputType.number,
+                autofillHints: const [AutofillHints.oneTimeCode],
                 textInputAction: TextInputAction.next,
                 validator: (v) =>
                     (v == null || v.isEmpty) ? 'Enter the reset code' : null,
@@ -101,6 +104,7 @@ class _EnterCodeAndPasswordScreenState
                 ),
                 style: const TextStyle(fontSize: 14, color: LnColors.lnText),
                 obscureText: _obscureNew,
+                autofillHints: const [AutofillHints.newPassword],
                 textInputAction: TextInputAction.next,
                 validator: (v) {
                   if (v == null || v.length < 8) {
@@ -126,6 +130,7 @@ class _EnterCodeAndPasswordScreenState
                 ),
                 style: const TextStyle(fontSize: 14, color: LnColors.lnText),
                 obscureText: _obscureConfirm,
+                autofillHints: const [AutofillHints.newPassword],
                 textInputAction: TextInputAction.done,
                 onFieldSubmitted: (_) => _submit(email),
                 validator: (v) =>
@@ -151,6 +156,7 @@ class _EnterCodeAndPasswordScreenState
               child: const Text('Resend code'),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -158,6 +164,7 @@ class _EnterCodeAndPasswordScreenState
 
   void _submit(String email) {
     if (!_formKey.currentState!.validate()) return;
+    TextInput.finishAutofillContext();
     ref.read(authProvider.notifier).confirmForgotPassword(
           email,
           _codeCtrl.text.trim(),

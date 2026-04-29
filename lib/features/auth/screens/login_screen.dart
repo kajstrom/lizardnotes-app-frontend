@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -53,7 +54,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       subtitle: 'Welcome back to LizardNotes.',
       child: Form(
         key: _formKey,
-        child: Column(
+        child: AutofillGroup(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (auth.status == AuthStatus.error && auth.errorMessage != null)
@@ -74,6 +76,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     fontSize: 14, color: LnColors.lnText),
                 keyboardType: TextInputType.emailAddress,
                 autocorrect: false,
+                autofillHints: const [
+                  AutofillHints.username,
+                  AutofillHints.email,
+                ],
                 textInputAction: TextInputAction.next,
                 validator: (v) =>
                     (v == null || v.isEmpty) ? 'Enter your email' : null,
@@ -94,6 +100,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 style: const TextStyle(
                     fontSize: 14, color: LnColors.lnText),
                 obscureText: _obscure,
+                autofillHints: const [AutofillHints.password],
                 textInputAction: TextInputAction.done,
                 onFieldSubmitted: (_) => _submit(),
                 validator: (v) =>
@@ -117,6 +124,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               child: const Text('Forgot password?'),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -124,6 +132,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
+    TextInput.finishAutofillContext();
     ref
         .read(authProvider.notifier)
         .signIn(_emailCtrl.text.trim(), _passwordCtrl.text);

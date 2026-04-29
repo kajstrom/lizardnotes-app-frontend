@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../theme/colour_tokens.dart';
@@ -39,7 +40,8 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
           'Your account was created with a temporary password. Choose a new one to continue.',
       child: Form(
         key: _formKey,
-        child: Column(
+        child: AutofillGroup(
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const AuthInfoBox(
@@ -71,6 +73,7 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
                 ),
                 style: const TextStyle(fontSize: 14, color: LnColors.lnText),
                 obscureText: _obscureNew,
+                autofillHints: const [AutofillHints.newPassword],
                 textInputAction: TextInputAction.next,
                 validator: (v) {
                   if (v == null || v.length < 8) {
@@ -102,6 +105,7 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
                 ),
                 style: const TextStyle(fontSize: 14, color: LnColors.lnText),
                 obscureText: _obscureConfirm,
+                autofillHints: const [AutofillHints.newPassword],
                 textInputAction: TextInputAction.done,
                 onFieldSubmitted: (_) => _submit(),
                 validator: (v) =>
@@ -120,6 +124,7 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
                   : const Text('Continue'),
             ),
           ],
+          ),
         ),
       ),
     );
@@ -127,6 +132,7 @@ class _SetPasswordScreenState extends ConsumerState<SetPasswordScreen> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
+    TextInput.finishAutofillContext();
     ref.read(authProvider.notifier).confirmNewPassword(_passwordCtrl.text);
   }
 }
