@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../theme/colour_tokens.dart';
 import '../../../theme/dimensions.dart';
+import 'web_semantics_scope.dart';
 
 /// Shared scaffold wrapper used by every auth screen.
 ///
@@ -29,58 +30,62 @@ class AuthShell extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: LnColors.lnBg,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 400),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 36,
-                ),
-                decoration: BoxDecoration(
-                  color: LnColors.lnSurface,
-                  borderRadius: BorderRadius.circular(LnDims.r12),
-                  border: Border.all(color: LnColors.lnBorder, width: 1),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    _IconMark(useLock: useLockMark),
-                    const SizedBox(height: 20),
-                    Text(
-                      title,
-                      style: GoogleFonts.inter(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -0.33,
-                        color: LnColors.lnText,
+      body: WebSemanticsScope(
+        child: SafeArea(
+          child: Center(
+            child: SingleChildScrollView(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 36,
+                  ),
+                  decoration: BoxDecoration(
+                    color: LnColors.lnSurface,
+                    borderRadius: BorderRadius.circular(LnDims.r12),
+                    border: Border.all(color: LnColors.lnBorder, width: 1),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _IconMark(useLock: useLockMark),
+                      const SizedBox(height: 20),
+                      Text(
+                        title,
+                        style: GoogleFonts.inter(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.33,
+                          color: LnColors.lnText,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
-                      textAlign: TextAlign.center,
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 8),
-                      Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 320),
-                          child: Text(
-                            subtitle!,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: LnColors.lnText2,
-                              height: 1.5,
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 8),
+                        Center(
+                          child: ConstrainedBox(
+                            constraints:
+                                const BoxConstraints(maxWidth: 320),
+                            child: Text(
+                              subtitle!,
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: LnColors.lnText2,
+                                height: 1.5,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                            textAlign: TextAlign.center,
                           ),
                         ),
-                      ),
+                      ],
+                      const SizedBox(height: 28),
+                      child,
                     ],
-                    const SizedBox(height: 28),
-                    child,
-                  ],
+                  ),
                 ),
               ),
             ),
