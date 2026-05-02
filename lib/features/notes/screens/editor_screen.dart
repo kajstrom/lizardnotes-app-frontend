@@ -65,10 +65,6 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
   DateTime? _noteUpdatedAt;
   int _paragraphCount = 0;
 
-  // Desktop floating toolbar
-  OverlayEntry? _toolbarEntry;
-  Offset? _lastTapPosition;
-
   @override
   void initState() {
     super.initState();
@@ -78,8 +74,6 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     _scrollController = ScrollController();
 
     _quillController.addListener(_onDocumentChanged);
-    _editorFocus.addListener(_onEditorFocusChanged);
-    _scrollController.addListener(_onScroll);
   }
 
   @override
@@ -87,10 +81,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     _saveDebounce?.cancel();
     _savedClearTimer?.cancel();
     _titleDebounce?.cancel();
-    _removeToolbarOverlay();
     _quillController.removeListener(_onDocumentChanged);
-    _editorFocus.removeListener(_onEditorFocusChanged);
-    _scrollController.removeListener(_onScroll);
     _quillController.dispose();
     _editorFocus.dispose();
     _titleController.dispose();
@@ -107,18 +98,6 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       setState(() => _paragraphCount = count);
     }
     _scheduleAutoSave();
-    _updateToolbarPosition();
-  }
-
-  void _onEditorFocusChanged() {
-    // Do NOT dismiss the floating toolbar here. On web the editor's FocusNode
-    // loses focus whenever any non-focusable widget is tapped (including the
-    // toolbar buttons), which would remove the overlay before onTap fires.
-    // The overlay is managed via _updateToolbarPosition and _onScroll.
-  }
-
-  void _onScroll() {
-    _removeToolbarOverlay();
   }
 
   // ── Paragraph count ──────────────────────────────────────────────────────
@@ -224,42 +203,6 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     });
   }
 
-  // ── Desktop floating toolbar ─────────────────────────────────────────────
-
-  void _updateToolbarPosition() {
-    // Floating toolbar is desktop-only; mobile uses the docked toolbar.
-    if (!mounted) return;
-    final isDesktop = MediaQuery.of(context).size.width >= 600;
-    if (!isDesktop) return;
-
-    final selection = _quillController.selection;
-    final hasSelection = !selection.isCollapsed;
-
-    if (!hasSelection) {
-      _removeToolbarOverlay();
-      return;
-    }
-
-    final pos = _lastTapPosition;
-    if (pos == null) return;
-
-    _removeToolbarOverlay();
-    _toolbarEntry = OverlayEntry(
-      builder: (_) => _FloatingToolbar(
-        position: Offset(pos.dx - 110, pos.dy - 52),
-        controller: _quillController,
-        editorFocusNode: _editorFocus,
-        onDismiss: _removeToolbarOverlay,
-      ),
-    );
-    Overlay.of(context).insert(_toolbarEntry!);
-  }
-
-  void _removeToolbarOverlay() {
-    _toolbarEntry?.remove();
-    _toolbarEntry = null;
-  }
-
   // ── Breadcrumb ───────────────────────────────────────────────────────────
 
   List<String> _buildBreadcrumbSegments(Note note) {
@@ -361,6 +304,12 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
               }
             },
           ),
+          // ── Desktop docked format toolbar ─────────────────────────────
+          if (isDesktop && _loadState == _LoadState.loaded)
+            _DockedFormatBar(
+              controller: _quillController,
+              editorFocusNode: _editorFocus,
+            ),
           // ── Editor body ──────────────────────────────────────────────────
           Expanded(
             child: switch (_loadState) {
@@ -379,10 +328,6 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                   paragraphCount: _paragraphCount,
                   editorPad: tokens.editorPad,
                   isDesktop: isDesktop,
-                  onTapDown: (details, _) {
-                    _lastTapPosition = details.globalPosition;
-                    return false;
-                  },
                 ),
             },
           ),
@@ -390,13 +335,11 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
           if (_loadState == _LoadState.loaded && _loadedNoteId != null)
             AttachmentBar(noteId: _loadedNoteId!),
           // ── Mobile docked format toolbar ──────────────────────────────
-          // Show whenever a note is loaded, not based on _editorFocused.
-          // Tapping toolbar buttons defocuses the editor before onTap fires,
-          // which would remove the bar and swallow the format action.
           if (!isDesktop && _loadState == _LoadState.loaded)
-            _MobileFormatBar(
+            _DockedFormatBar(
               controller: _quillController,
               editorFocusNode: _editorFocus,
+              scrollable: true,
             ),
         ],
       ),
@@ -613,7 +556,6 @@ class _EditorBody extends StatelessWidget {
     required this.paragraphCount,
     required this.editorPad,
     required this.isDesktop,
-    required this.onTapDown,
   });
 
   final QuillController quillController;
@@ -625,7 +567,6 @@ class _EditorBody extends StatelessWidget {
   final int paragraphCount;
   final double editorPad;
   final bool isDesktop;
-  final bool Function(TapDownDetails, TextPosition Function(Offset))? onTapDown;
 
   @override
   Widget build(BuildContext context) {
@@ -664,7 +605,6 @@ class _EditorBody extends StatelessWidget {
                   autoFocus: false,
                   placeholder: 'Start writing\u2026',
                   customStyles: _buildStyles(),
-                  onTapDown: onTapDown,
                 ),
               ),
             ],
@@ -948,17 +888,19 @@ class _EmptyState extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Mobile docked format bar
+// Docked format bar (used for both desktop and mobile layouts)
 // ---------------------------------------------------------------------------
 
-class _MobileFormatBar extends StatelessWidget {
-  const _MobileFormatBar({
+class _DockedFormatBar extends StatelessWidget {
+  const _DockedFormatBar({
     required this.controller,
     required this.editorFocusNode,
+    this.scrollable = false,
   });
 
   final QuillController controller;
   final FocusNode editorFocusNode;
+  final bool scrollable;
 
   @override
   Widget build(BuildContext context) {
@@ -968,78 +910,14 @@ class _MobileFormatBar extends StatelessWidget {
         color: LnColors.lnSurface2,
         border: Border(
           top: BorderSide(color: LnColors.lnBorder, width: 1),
+          bottom: BorderSide(color: LnColors.lnBorder, width: 1),
         ),
       ),
       child: FormatToolbar(
         controller: controller,
-        scrollable: true,
+        scrollable: scrollable,
         editorFocusNode: editorFocusNode,
       ),
-    );
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Desktop floating toolbar overlay widget
-// ---------------------------------------------------------------------------
-
-class _FloatingToolbar extends StatelessWidget {
-  const _FloatingToolbar({
-    required this.position,
-    required this.controller,
-    required this.editorFocusNode,
-    required this.onDismiss,
-  });
-
-  final Offset position;
-  final QuillController controller;
-  final FocusNode editorFocusNode;
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    const toolbarWidth = 390.0;
-    final dx = position.dx.clamp(8.0, screenWidth - toolbarWidth - 8.0);
-    final dy = position.dy.clamp(8.0, double.infinity);
-
-    return Stack(
-      children: [
-        // Transparent dismiss layer.
-        Positioned.fill(
-          child: GestureDetector(
-            onTap: onDismiss,
-            behavior: HitTestBehavior.translucent,
-          ),
-        ),
-        Positioned(
-          left: dx,
-          top: dy,
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              width: toolbarWidth,
-              height: 36,
-              decoration: BoxDecoration(
-                color: LnColors.lnSurface2,
-                borderRadius: BorderRadius.circular(LnDims.r6),
-                border: Border.all(color: LnColors.lnBorder3),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x40000000),
-                    blurRadius: 12,
-                    offset: Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: FormatToolbar(
-                controller: controller,
-                editorFocusNode: editorFocusNode,
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

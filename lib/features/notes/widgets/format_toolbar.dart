@@ -31,19 +31,24 @@ class FormatToolbar extends StatefulWidget {
 }
 
 class _FormatToolbarState extends State<FormatToolbar> {
-  // Last known non-collapsed selection. Saved on every controller change so
-  // we can restore it before formatting — tapping a toolbar button shifts
-  // focus away from the editor and collapses the selection before onTap fires.
+  // Cached selection (any kind, including collapsed). A toolbar tap can shift
+  // focus and move the live selection before onTap fires, so we restore from
+  // this cache when applying formats.
   TextSelection? _savedSelection;
+
+  // Last-rendered visual signature. The controller fires on every keystroke;
+  // we only rebuild when something the toolbar actually shows would change
+  // (active button states, link enable/disable). This keeps the always-on
+  // desktop toolbar from rebuilding — and re-running ExcludeFocus / Focus —
+  // on every cursor movement, which on web can race with the editor's own
+  // focus handling and swallow keystrokes.
+  _ToolbarVisualState _lastVisual = const _ToolbarVisualState.empty();
 
   @override
   void initState() {
     super.initState();
-    // Snapshot the current selection immediately — the listener won't fire
-    // until the next controller change, so without this the very first tap
-    // after the toolbar appears would have _savedSelection == null.
-    final sel = widget.controller.selection;
-    if (!sel.isCollapsed) _savedSelection = sel;
+    _savedSelection = widget.controller.selection;
+    _lastVisual = _computeVisual();
     widget.controller.addListener(_onControllerChanged);
   }
 
@@ -54,12 +59,39 @@ class _FormatToolbarState extends State<FormatToolbar> {
   }
 
   void _onControllerChanged() {
-    final sel = widget.controller.selection;
-    if (!sel.isCollapsed) _savedSelection = sel;
+    _savedSelection = widget.controller.selection;
+    final next = _computeVisual();
+    if (next == _lastVisual) return;
+    _lastVisual = next;
     setState(() {});
   }
 
-  bool _isActiveForSel(Attribute attr, TextSelection sel) {
+  _ToolbarVisualState _computeVisual() {
+    final style = widget.controller.getSelectionStyle();
+    final attrs = style.attributes;
+    bool has(Attribute a) {
+      final existing = attrs[a.key];
+      if (existing == null) return false;
+      if (a.value == null) return true;
+      return existing.value == a.value;
+    }
+
+    final linkActive = attrs[Attribute.link.key] != null;
+    return _ToolbarVisualState(
+      bold: has(Attribute.bold),
+      italic: has(Attribute.italic),
+      h1: has(Attribute.h1),
+      h2: has(Attribute.h2),
+      h3: has(Attribute.h3),
+      ul: has(Attribute.ul),
+      ol: has(Attribute.ol),
+      codeBlock: has(Attribute.codeBlock),
+      linkActive: linkActive,
+      linkDisabled: widget.controller.selection.isCollapsed && !linkActive,
+    );
+  }
+
+  bool _isActive(Attribute attr) {
     final style = widget.controller.getSelectionStyle();
     final existing = style.attributes[attr.key];
     if (existing == null) return false;
@@ -67,27 +99,24 @@ class _FormatToolbarState extends State<FormatToolbar> {
     return existing.value == attr.value;
   }
 
-  bool _isActive(Attribute attr) => _isActiveForSel(attr, widget.controller.selection);
-
   void _toggle(Attribute attr) {
     final sel = _savedSelection ?? widget.controller.selection;
-    if (sel.isCollapsed) return;
-    // Use formatText with explicit offsets so we never need to call
-    // updateSelection (which would trigger another overlay rebuild cycle).
-    final active = _isActiveForSel(attr, sel);
+    final active = _isActive(attr);
+    // One call covers all cases:
+    // - non-collapsed inline mark: applies to the range
+    // - collapsed inline mark: arms toggledStyle for the next typed text
+    // - block scope at any cursor/selection: applies to the line(s)
     widget.controller.formatText(
       sel.start,
       sel.end - sel.start,
       active ? Attribute.clone(attr, null) : attr,
     );
-    // ExcludeFocus prevents the toolbar from stealing focus, so the editor
-    // retains focus throughout. No need to re-request it here; doing so
-    // triggers _onEditorFocusChanged → setState → rebuild cascade that causes
-    // content loss on web.
   }
 
   Future<void> _applyLink() async {
-    // Snapshot selection now — the dialog will collapse it.
+    // Links are the one format that requires a non-collapsed selection — a
+    // link must wrap a span of text, and it can sit inside any block (e.g. a
+    // list item), so the selection is what disambiguates the target.
     final sel = _savedSelection ?? widget.controller.selection;
     if (sel.isCollapsed) return;
 
@@ -112,56 +141,58 @@ class _FormatToolbarState extends State<FormatToolbar> {
 
   @override
   Widget build(BuildContext context) {
+    final v = _lastVisual;
     final buttons = [
       _ToolbarButton(
         label: 'B',
         bold: true,
-        isActive: _isActive(Attribute.bold),
+        isActive: v.bold,
         onTap: () => _toggle(Attribute.bold),
       ),
       _ToolbarButton(
         label: 'I',
         italic: true,
-        isActive: _isActive(Attribute.italic),
+        isActive: v.italic,
         onTap: () => _toggle(Attribute.italic),
       ),
       const _ToolbarDivider(),
       _ToolbarButton(
         label: 'H1',
-        isActive: _isActive(Attribute.h1),
+        isActive: v.h1,
         onTap: () => _toggle(Attribute.h1),
       ),
       _ToolbarButton(
         label: 'H2',
-        isActive: _isActive(Attribute.h2),
+        isActive: v.h2,
         onTap: () => _toggle(Attribute.h2),
       ),
       _ToolbarButton(
         label: 'H3',
-        isActive: _isActive(Attribute.h3),
+        isActive: v.h3,
         onTap: () => _toggle(Attribute.h3),
       ),
       const _ToolbarDivider(),
       _ToolbarButton(
         label: '• list',
-        isActive: _isActive(Attribute.ul),
+        isActive: v.ul,
         onTap: () => _toggle(Attribute.ul),
       ),
       _ToolbarButton(
         label: '1. list',
-        isActive: _isActive(Attribute.ol),
+        isActive: v.ol,
         onTap: () => _toggle(Attribute.ol),
       ),
       const _ToolbarDivider(),
       _ToolbarButton(
         label: 'code',
         mono: true,
-        isActive: _isActive(Attribute.codeBlock),
+        isActive: v.codeBlock,
         onTap: () => _toggle(Attribute.codeBlock),
       ),
       _ToolbarButton(
         label: 'link',
-        isActive: _isActive(Attribute.link),
+        isActive: v.linkActive,
+        disabled: v.linkDisabled,
         onTap: _applyLink,
       ),
     ];
@@ -193,6 +224,7 @@ class _ToolbarButton extends StatefulWidget {
     this.bold = false,
     this.italic = false,
     this.mono = false,
+    this.disabled = false,
   });
 
   final String label;
@@ -201,6 +233,7 @@ class _ToolbarButton extends StatefulWidget {
   final bool bold;
   final bool italic;
   final bool mono;
+  final bool disabled;
 
   @override
   State<_ToolbarButton> createState() => _ToolbarButtonState();
@@ -213,8 +246,12 @@ class _ToolbarButtonState extends State<_ToolbarButton> {
   Widget build(BuildContext context) {
     final bg = widget.isActive
         ? LnColors.lnAccentBg
-        : (_hovered ? LnColors.lnSurface3 : Colors.transparent);
-    final fg = widget.isActive ? LnColors.lnAccent2 : LnColors.lnText2;
+        : (!widget.disabled && _hovered
+            ? LnColors.lnSurface3
+            : Colors.transparent);
+    final fg = widget.disabled
+        ? LnColors.lnText3
+        : (widget.isActive ? LnColors.lnAccent2 : LnColors.lnText2);
 
     TextStyle style;
     if (widget.mono) {
@@ -233,11 +270,13 @@ class _ToolbarButtonState extends State<_ToolbarButton> {
     }
 
     return MouseRegion(
-      cursor: SystemMouseCursors.click,
+      cursor: widget.disabled
+          ? SystemMouseCursors.basic
+          : SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: GestureDetector(
-        onTap: widget.onTap,
+        onTap: widget.disabled ? null : widget.onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 80),
           margin: const EdgeInsets.symmetric(horizontal: 1, vertical: 4),
@@ -251,6 +290,77 @@ class _ToolbarButtonState extends State<_ToolbarButton> {
       ),
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// Visual state — drives whether the toolbar needs to rebuild
+// ---------------------------------------------------------------------------
+
+@immutable
+class _ToolbarVisualState {
+  const _ToolbarVisualState({
+    required this.bold,
+    required this.italic,
+    required this.h1,
+    required this.h2,
+    required this.h3,
+    required this.ul,
+    required this.ol,
+    required this.codeBlock,
+    required this.linkActive,
+    required this.linkDisabled,
+  });
+
+  const _ToolbarVisualState.empty()
+      : bold = false,
+        italic = false,
+        h1 = false,
+        h2 = false,
+        h3 = false,
+        ul = false,
+        ol = false,
+        codeBlock = false,
+        linkActive = false,
+        linkDisabled = true;
+
+  final bool bold;
+  final bool italic;
+  final bool h1;
+  final bool h2;
+  final bool h3;
+  final bool ul;
+  final bool ol;
+  final bool codeBlock;
+  final bool linkActive;
+  final bool linkDisabled;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _ToolbarVisualState &&
+      other.bold == bold &&
+      other.italic == italic &&
+      other.h1 == h1 &&
+      other.h2 == h2 &&
+      other.h3 == h3 &&
+      other.ul == ul &&
+      other.ol == ol &&
+      other.codeBlock == codeBlock &&
+      other.linkActive == linkActive &&
+      other.linkDisabled == linkDisabled;
+
+  @override
+  int get hashCode => Object.hash(
+        bold,
+        italic,
+        h1,
+        h2,
+        h3,
+        ul,
+        ol,
+        codeBlock,
+        linkActive,
+        linkDisabled,
+      );
 }
 
 // ---------------------------------------------------------------------------
