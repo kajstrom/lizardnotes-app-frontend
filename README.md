@@ -13,6 +13,14 @@ Flutter web/mobile/desktop frontend for LizardNotes, a personal Obsidian-inspire
 
 Config values (API URL, Cognito IDs) are fetched from AWS SSM at runtime — see `.env.example` for the expected keys.
 
+### One-time setup
+
+```bash
+bash scripts/setup_hooks.sh
+```
+
+Points git at `.githooks/`, enabling the pre-commit hook that runs `flutter analyze` and `flutter test` before each commit. Bypass with `git commit --no-verify` when needed.
+
 ### Run locally (hot reload)
 
 ```bash

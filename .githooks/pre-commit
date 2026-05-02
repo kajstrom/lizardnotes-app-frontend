@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "Running pre-commit checks..."
+
+echo "==> flutter analyze"
+flutter analyze
+
+echo "==> flutter test"
+flutter test
