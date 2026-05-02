@@ -36,20 +36,23 @@ enum _RowStatus { uploading, complete, failed }
 class _UploadRow {
   _UploadRow({
     required this.filename,
-    required this.size,
     required this.mimeType,
-    required this.bytes,
+    required this.source,
     this.status = _RowStatus.uploading,
     this.error,
   }) : progress = 0.0;
 
   final String filename;
-  final int size;
   final String mimeType;
-  final Uint8List bytes;
+  final UploadSource source;
   _RowStatus status;
   double progress;
   String? error;
+
+  int get size => source.size;
+  // Stream sources are single-shot; retry would drain an already-consumed
+  // stream. Bytes can be replayed.
+  bool get canRetry => source is BytesSource;
 }
 
 class _UploadOverlayState extends ConsumerState<UploadOverlay> {
@@ -63,20 +66,23 @@ class _UploadOverlayState extends ConsumerState<UploadOverlay> {
   // ── File intake ────────────────────────────────────────────────────────
 
   Future<void> _pickFiles() async {
+    // Stream from disk/blob rather than loading bytes into memory. Mobile
+    // browsers OOM on 5–25 MB camera photos when withData reads via
+    // FileReader.readAsArrayBuffer.
     final result = await FilePicker.pickFiles(
       allowMultiple: true,
       type: FileType.custom,
       allowedExtensions: _allowedExtensions,
-      withData: true,
+      withReadStream: true,
     );
     if (result == null) return;
     for (final f in result.files) {
-      final bytes = f.bytes;
-      if (bytes == null) continue;
-      _addRow(
+      final stream = f.readStream;
+      if (stream == null) continue;
+      _addRowFromSource(
         filename: f.name,
-        bytes: bytes,
         mimeType: lookupMimeType(f.name) ?? 'application/octet-stream',
+        source: StreamSource(stream: stream, size: f.size),
       );
     }
   }
@@ -88,25 +94,24 @@ class _UploadOverlayState extends ConsumerState<UploadOverlay> {
     final mime = await _dropzone!.getFileMIME(dropped);
     if (!mounted) return;
     setState(() => _dragOver = false);
-    _addRow(
+    _addRowFromSource(
       filename: name,
-      bytes: bytes,
       mimeType: mime.isEmpty ? 'application/octet-stream' : mime,
+      source: BytesSource(bytes),
     );
   }
 
-  void _addRow({
+  void _addRowFromSource({
     required String filename,
-    required Uint8List bytes,
     required String mimeType,
+    required UploadSource source,
   }) {
-    if (bytes.length > _maxFileSize) {
+    if (source.size > _maxFileSize) {
       setState(() {
         _rows.add(_UploadRow(
           filename: filename,
-          size: bytes.length,
           mimeType: mimeType,
-          bytes: bytes,
+          source: source,
           status: _RowStatus.failed,
           error: 'exceeds 25 MB limit',
         ));
@@ -118,9 +123,8 @@ class _UploadOverlayState extends ConsumerState<UploadOverlay> {
       setState(() {
         _rows.add(_UploadRow(
           filename: filename,
-          size: bytes.length,
           mimeType: mimeType,
-          bytes: bytes,
+          source: source,
           status: _RowStatus.failed,
           error: 'unsupported file type',
         ));
@@ -130,9 +134,8 @@ class _UploadOverlayState extends ConsumerState<UploadOverlay> {
 
     final row = _UploadRow(
       filename: filename,
-      size: bytes.length,
       mimeType: mimeType,
-      bytes: bytes,
+      source: source,
     );
     setState(() => _rows.add(row));
     _startUpload(row);
@@ -142,7 +145,7 @@ class _UploadOverlayState extends ConsumerState<UploadOverlay> {
     ref.read(attachmentProvider(widget.noteId).notifier).uploadAttachment(
           filename: row.filename,
           mimeType: row.mimeType,
-          bytes: row.bytes,
+          source: row.source,
           onProgress: (p) {
             if (!mounted) return;
             setState(() => row.progress = p);
@@ -352,7 +355,7 @@ class _UploadOverlayState extends ConsumerState<UploadOverlay> {
           if (row.status == _RowStatus.complete)
             const Icon(Icons.check_circle,
                 size: 16, color: LnColors.lnSuccess),
-          if (row.status == _RowStatus.failed)
+          if (row.status == _RowStatus.failed && row.canRetry)
             TextButton(
               onPressed: () => _retry(row),
               child: const Text('Retry',

@@ -52,7 +52,7 @@ void main() {
       final uploadCompleter = Completer<void>();
       final container = _makeContainer(
         client,
-        uploader: ({required url, required bytes, required contentType, onProgress}) async {
+        uploader: ({required url, required source, required contentType, onProgress}) async {
           onProgress?.call(50, 100);
           await uploadCompleter.future;
         },
@@ -64,7 +64,7 @@ void main() {
           .uploadAttachment(
             filename: 'file.pdf',
             mimeType: 'application/pdf',
-            bytes: Uint8List(10),
+            source: BytesSource(Uint8List(10)),
           );
 
       // Allow microtasks: createAttachment resolves, item inserted as uploading,
@@ -97,7 +97,7 @@ void main() {
 
       final container = _makeContainer(
         client,
-        uploader: ({required url, required bytes, required contentType, onProgress}) async {
+        uploader: ({required url, required source, required contentType, onProgress}) async {
           throw Exception('network down');
         },
       );
@@ -108,7 +108,7 @@ void main() {
           .uploadAttachment(
             filename: 'file.pdf',
             mimeType: 'application/pdf',
-            bytes: Uint8List(10),
+            source: BytesSource(Uint8List(10)),
           );
 
       final state = container.read(attachmentProvider('note1'));

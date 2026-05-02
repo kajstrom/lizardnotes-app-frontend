@@ -10,30 +10,63 @@ import '../models/attachment.dart';
 import '../../search/providers/attachment_registry_provider.dart';
 
 // ---------------------------------------------------------------------------
+// Upload source — abstracts bytes-in-memory vs streaming-from-blob.
+//
+// On mobile browsers, reading a 5–25 MB camera photo into a Uint8List via
+// FileReader.readAsArrayBuffer can OOM the tab. StreamSource lets the file
+// stream straight to S3 in chunks without ever materializing the whole file.
+// ---------------------------------------------------------------------------
+
+sealed class UploadSource {
+  const UploadSource();
+  int get size;
+  Stream<List<int>> openRead();
+}
+
+class BytesSource extends UploadSource {
+  const BytesSource(this.bytes);
+  final Uint8List bytes;
+  @override
+  int get size => bytes.length;
+  @override
+  Stream<List<int>> openRead() => Stream.value(bytes);
+}
+
+class StreamSource extends UploadSource {
+  const StreamSource({required Stream<List<int>> stream, required this.size})
+      : _stream = stream;
+  final Stream<List<int>> _stream;
+  @override
+  final int size;
+  @override
+  Stream<List<int>> openRead() => _stream;
+}
+
+// ---------------------------------------------------------------------------
 // Injectable seams (overridden in tests)
 // ---------------------------------------------------------------------------
 
 typedef S3Uploader = Future<void> Function({
   required String url,
-  required Uint8List bytes,
+  required UploadSource source,
   required String contentType,
   void Function(int sent, int total)? onProgress,
 });
 
 Future<void> _defaultS3Upload({
   required String url,
-  required Uint8List bytes,
+  required UploadSource source,
   required String contentType,
   void Function(int sent, int total)? onProgress,
 }) async {
   final dio = Dio();
   await dio.put<void>(
     url,
-    data: Stream.fromIterable([bytes]),
+    data: source.openRead(),
     options: Options(
       headers: {
         Headers.contentTypeHeader: contentType,
-        Headers.contentLengthHeader: bytes.length,
+        Headers.contentLengthHeader: source.size,
       },
     ),
     onSendProgress: onProgress,
@@ -155,7 +188,7 @@ class AttachmentNotifier extends Notifier<AttachmentState> {
   Future<void> uploadAttachment({
     required String filename,
     required String mimeType,
-    required Uint8List bytes,
+    required UploadSource source,
     void Function(double progress)? onProgress,
     void Function()? onComplete,
     void Function(String error)? onError,
@@ -167,7 +200,7 @@ class AttachmentNotifier extends Notifier<AttachmentState> {
         noteId: _noteId,
         filename: filename,
         mimeType: mimeType,
-        size: bytes.length,
+        size: source.size,
       );
       meta = result.attachment;
       uploadUrl = result.uploadUrl;
@@ -178,7 +211,7 @@ class AttachmentNotifier extends Notifier<AttachmentState> {
         noteId: _noteId,
         filename: filename,
         mimeType: mimeType,
-        size: bytes.length,
+        size: source.size,
         createdAt: DateTime.now(),
       );
       state = state.copyWith(
@@ -207,7 +240,7 @@ class AttachmentNotifier extends Notifier<AttachmentState> {
     try {
       await _uploader(
         url: uploadUrl,
-        bytes: bytes,
+        source: source,
         contentType: mimeType,
         onProgress: (sent, total) {
           if (total <= 0) return;

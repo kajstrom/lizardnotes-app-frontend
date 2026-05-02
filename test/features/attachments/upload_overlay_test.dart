@@ -1,5 +1,4 @@
-import 'dart:typed_data';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -74,7 +73,7 @@ void main() {
         .uploadAttachment(
           filename: 'big.pdf',
           mimeType: 'application/pdf',
-          bytes: bytes,
+          source: BytesSource(bytes),
         );
 
     final state = container.read(attachmentProvider('n1'));
