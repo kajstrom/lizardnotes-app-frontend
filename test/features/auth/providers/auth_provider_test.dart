@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lizardnotes_app/features/auth/providers/auth_provider.dart';
 import 'package:lizardnotes_app/features/auth/services/auth_service.dart';
+import 'package:lizardnotes_app/features/notes/providers/selected_note_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ---------------------------------------------------------------------------
 // Fake implementation — no real network calls.
@@ -115,6 +117,9 @@ ProviderContainer _makeContainer(FakeAuthService service) {
 }
 
 void main() {
+  setUpAll(TestWidgetsFlutterBinding.ensureInitialized);
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   group('AuthNotifier.signIn', () {
     test('happy path — transitions to authenticated', () async {
       final svc = FakeAuthService()..queueResult(SignInResult.authenticated);
@@ -276,10 +281,24 @@ void main() {
 
       expect(container.read(authProvider).status, AuthStatus.unauthenticated);
     });
+
+    test('restore success sets authenticated and restores persisted note',
+        () async {
+      SharedPreferences.setMockInitialValues(
+          {'lastSelectedNoteId': 'note-xyz'});
+      final svc = FakeAuthService()..queueRestoreSuccess();
+      final container = _makeContainer(svc);
+      addTearDown(container.dispose);
+
+      await container.read(authProvider.notifier).restoreSession();
+
+      expect(container.read(authProvider).status, AuthStatus.authenticated);
+      expect(container.read(selectedNoteIdProvider), 'note-xyz');
+    });
   });
 
   group('AuthNotifier.signOut', () {
-    test('clears state', () async {
+    test('clears auth state', () async {
       final svc = FakeAuthService()..queueResult(SignInResult.authenticated);
       final container = _makeContainer(svc);
       addTearDown(container.dispose);
@@ -289,6 +308,19 @@ void main() {
 
       await container.read(authProvider.notifier).signOut();
       expect(container.read(authProvider).status, AuthStatus.unauthenticated);
+    });
+
+    test('clears selected note', () async {
+      final svc = FakeAuthService()..queueResult(SignInResult.authenticated);
+      final container = _makeContainer(svc);
+      addTearDown(container.dispose);
+
+      await container.read(authProvider.notifier).signIn('a@b.com', 'pw');
+      container.read(selectedNoteIdProvider.notifier).select('note-abc');
+      expect(container.read(selectedNoteIdProvider), 'note-abc');
+
+      await container.read(authProvider.notifier).signOut();
+      expect(container.read(selectedNoteIdProvider), isNull);
     });
   });
 }

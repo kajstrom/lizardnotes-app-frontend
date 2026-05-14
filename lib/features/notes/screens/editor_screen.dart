@@ -259,6 +259,12 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
         : null;
 
     if (selectedNoteId == null) {
+      if (!isDesktop) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) context.go(RouteNames.appFolders);
+        });
+        return const SizedBox.shrink();
+      }
       return const _EmptyState();
     }
 

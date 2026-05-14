@@ -3,22 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../api/api_client.dart';
 import '../models/note.dart';
 
-// ---------------------------------------------------------------------------
-// Selected note
-// ---------------------------------------------------------------------------
-
-/// The currently selected note ID. Updated when the user taps a note tile.
-final selectedNoteIdProvider =
-    NotifierProvider<SelectedNoteNotifier, String?>(
-  SelectedNoteNotifier.new,
-);
-
-class SelectedNoteNotifier extends Notifier<String?> {
-  @override
-  String? build() => null;
-
-  void select(String? id) => state = id;
-}
+import 'selected_note_provider.dart';
+export 'selected_note_provider.dart';
 
 // ---------------------------------------------------------------------------
 // Note state

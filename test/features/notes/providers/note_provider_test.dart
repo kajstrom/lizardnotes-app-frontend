@@ -6,6 +6,7 @@ import 'package:lizardnotes_app/api/api_client.dart';
 import 'package:lizardnotes_app/features/notes/models/note.dart';
 import 'package:lizardnotes_app/features/notes/providers/note_provider.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 // ---------------------------------------------------------------------------
 // Mock
@@ -41,6 +42,8 @@ ProviderContainer _makeContainer(ApiClient client) {
 
 void main() {
   setUpAll(() {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    SharedPreferences.setMockInitialValues({});
     registerFallbackValue(_makeNote('fallback'));
   });
 

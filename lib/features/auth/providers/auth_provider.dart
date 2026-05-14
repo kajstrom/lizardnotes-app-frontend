@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../api/api_client.dart';
 import '../../../router/app_router.dart';
+import '../../notes/providers/selected_note_provider.dart';
 import '../services/auth_service.dart';
 
 enum AuthStatus {
@@ -209,6 +210,7 @@ class AuthNotifier extends Notifier<AuthState> {
   /// Signs out and clears persisted tokens.
   Future<void> signOut() async {
     await _service.signOut();
+    ref.read(selectedNoteIdProvider.notifier).select(null);
     state = const AuthState();
     AppRouter.isLoggedIn.value = false;
   }
@@ -244,6 +246,7 @@ class AuthNotifier extends Notifier<AuthState> {
         status: AuthStatus.authenticated,
         session: _service.currentSession,
       );
+      await ref.read(selectedNoteIdProvider.notifier).restoreFromPrefs();
       _syncLoginNotifier();
     } else if (state.status == AuthStatus.restoring) {
       state = state.copyWith(status: AuthStatus.unauthenticated);
