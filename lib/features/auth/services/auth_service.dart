@@ -26,6 +26,12 @@ abstract class AuthService {
   Future<void> signOut();
   Future<bool> tryRestoreSession();
 
+  /// Returns true if the user has previously completed TOTP MFA setup.
+  Future<bool> isMfaConfigured();
+
+  /// Persists that MFA setup is complete. Called after [verifyMfaSetup].
+  Future<void> markMfaConfigured();
+
   /// Returns a valid access JWT, refreshing the session if needed.
   ///
   /// Returns `null` if no session is available or the refresh token has
@@ -61,6 +67,7 @@ class CognitoAuthService implements AuthService {
   static const _kAccessToken = 'auth_access_token';
   static const _kRefreshToken = 'auth_refresh_token';
   static const _kUsername = 'auth_username';
+  static const _kMfaConfigured = 'auth_mfa_configured';
 
   @override
   CognitoUserSession? get currentSession => _session;
@@ -111,6 +118,7 @@ class CognitoAuthService implements AuthService {
       friendlyDeviceName: 'LizardNotes',
     );
     if (!ok) throw Exception('TOTP verification failed');
+    await markMfaConfigured();
     // Attempt to retrieve session post-setup; not all flows return one here.
     try {
       _session = await _user!.getSession();
@@ -118,6 +126,18 @@ class CognitoAuthService implements AuthService {
     } catch (_) {
       // Session unavailable — caller should handle by re-authenticating.
     }
+  }
+
+  @override
+  Future<bool> isMfaConfigured() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_kMfaConfigured) ?? false;
+  }
+
+  @override
+  Future<void> markMfaConfigured() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kMfaConfigured, true);
   }
 
   @override

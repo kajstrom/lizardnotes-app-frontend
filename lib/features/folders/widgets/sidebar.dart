@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -285,6 +286,8 @@ class _SidebarFooter extends StatelessWidget {
           const SizedBox(width: 6),
           // + folder button (ghost icon)
           _NewFolderButton(notifier: notifier),
+          const SizedBox(width: 6),
+          const _SettingsButton(),
         ],
       ),
     );
@@ -367,6 +370,46 @@ class _NewFolderButtonState extends State<_NewFolderButton> {
           child: const Center(
             child: Icon(
               Icons.create_new_folder_outlined,
+              size: 14,
+              color: LnColors.lnText2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SettingsButton extends StatefulWidget {
+  const _SettingsButton();
+
+  @override
+  State<_SettingsButton> createState() => _SettingsButtonState();
+}
+
+class _SettingsButtonState extends State<_SettingsButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: () => context.go('/app/settings'),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 80),
+          width: 30,
+          height: 30,
+          decoration: BoxDecoration(
+            color: _hovered ? LnColors.lnSurface3 : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: LnColors.lnBorder2),
+          ),
+          child: const Center(
+            child: Icon(
+              Icons.settings_outlined,
               size: 14,
               color: LnColors.lnText2,
             ),

@@ -104,6 +104,12 @@ class FakeAuthService implements AuthService {
 
   @override
   CognitoUserSession? get currentSession => null;
+
+  @override
+  Future<bool> isMfaConfigured() async => false;
+
+  @override
+  Future<void> markMfaConfigured() async {}
 }
 
 // ---------------------------------------------------------------------------
