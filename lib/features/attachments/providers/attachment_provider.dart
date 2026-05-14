@@ -8,6 +8,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../api/api_client.dart';
 import '../models/attachment.dart';
 import '../../search/providers/attachment_registry_provider.dart';
+import '../web/web_attachment_io_stub.dart'
+    if (dart.library.js_interop) '../web/web_attachment_io.dart' as webio;
 
 // ---------------------------------------------------------------------------
 // Upload source — abstracts bytes-in-memory vs streaming-from-blob.
@@ -17,7 +19,9 @@ import '../../search/providers/attachment_registry_provider.dart';
 // stream straight to S3 in chunks without ever materializing the whole file.
 // ---------------------------------------------------------------------------
 
-sealed class UploadSource {
+// Not `sealed` — WebBlobSource lives in a conditionally-imported file so that
+// `dart:js_interop` doesn't leak into native/test compilation.
+abstract class UploadSource {
   const UploadSource();
   int get size;
   Stream<List<int>> openRead();
@@ -59,6 +63,17 @@ Future<void> _defaultS3Upload({
   required String contentType,
   void Function(int sent, int total)? onProgress,
 }) async {
+  // On web, route a WebBlobSource through XHR so the browser streams the Blob
+  // directly to S3 — never copying its bytes into the JS/Dart heap. Other
+  // sources (and all native platforms) fall through to Dio.
+  final handled = await webio.tryUploadWebBlob(
+    source: source,
+    url: url,
+    contentType: contentType,
+    onProgress: onProgress,
+  );
+  if (handled) return;
+
   final dio = Dio();
   await dio.put<void>(
     url,

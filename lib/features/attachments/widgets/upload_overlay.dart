@@ -9,6 +9,8 @@ import 'package:mime/mime.dart';
 import '../../../theme/colour_tokens.dart';
 import '../../../theme/text_styles.dart';
 import '../providers/attachment_provider.dart';
+import '../web/web_attachment_io_stub.dart'
+    if (dart.library.js_interop) '../web/web_attachment_io.dart' as webio;
 
 const int _maxFileSize = 25 * 1024 * 1024;
 const List<String> _allowedExtensions = ['pdf', 'png', 'jpg', 'md', 'xlsx'];
@@ -51,8 +53,9 @@ class _UploadRow {
 
   int get size => source.size;
   // Stream sources are single-shot; retry would drain an already-consumed
-  // stream. Bytes can be replayed.
-  bool get canRetry => source is BytesSource;
+  // stream. Bytes and web Blob references can be replayed.
+  bool get canRetry =>
+      source is BytesSource || source is webio.WebBlobSource;
 }
 
 class _UploadOverlayState extends ConsumerState<UploadOverlay> {
@@ -66,9 +69,27 @@ class _UploadOverlayState extends ConsumerState<UploadOverlay> {
   // ── File intake ────────────────────────────────────────────────────────
 
   Future<void> _pickFiles() async {
-    // Stream from disk/blob rather than loading bytes into memory. Mobile
-    // browsers OOM on 5–25 MB camera photos when withData reads via
-    // FileReader.readAsArrayBuffer.
+    if (kIsWeb) {
+      // Use a raw <input type="file"> and keep the JS Blob reference. Mobile
+      // browsers OOM even with file_picker_web's withReadStream because that
+      // path still calls FileReader.readAsArrayBuffer under the hood. Passing
+      // the Blob to XHR.send() lets the browser stream it natively.
+      const accept =
+          '.pdf,.png,.jpg,.md,.xlsx,image/png,image/jpeg';
+      final picked = await webio.pickWebFiles(accept: accept);
+      for (final f in picked) {
+        _addRowFromSource(
+          filename: f.name,
+          mimeType:
+              lookupMimeType(f.name) ??
+                  (f.mimeType.isEmpty ? 'application/octet-stream' : f.mimeType),
+          source: webio.WebBlobSource(blob: f.blob, size: f.size),
+        );
+      }
+      return;
+    }
+
+    // Native (mobile/desktop): file_picker streams from disk.
     final result = await FilePicker.pickFiles(
       allowMultiple: true,
       type: FileType.custom,

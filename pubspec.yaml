@@ -48,6 +48,7 @@ dependencies:
   url_launcher: any
   flutter_dropzone: any
   dio: any
+  web: ^1.0.0
 
 dev_dependencies:
   flutter_test:
