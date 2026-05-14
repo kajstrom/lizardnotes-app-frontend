@@ -1,6 +1,8 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -74,10 +76,12 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     _scrollController = ScrollController();
 
     _quillController.addListener(_onDocumentChanged);
+    if (kIsWeb) BrowserContextMenu.enableContextMenu();
   }
 
   @override
   void dispose() {
+    if (kIsWeb) BrowserContextMenu.disableContextMenu();
     _saveDebounce?.cancel();
     _savedClearTimer?.cancel();
     _titleDebounce?.cancel();
