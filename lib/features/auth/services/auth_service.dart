@@ -105,6 +105,14 @@ class CognitoAuthService implements AuthService {
 
   @override
   Future<String> setupMfa() async {
+    // Force a token refresh so that the CognitoUser object has its internal
+    // signInUserSession set. This is required for associateSoftwareToken() —
+    // the session reconstructed from SharedPreferences (fast-path restore)
+    // is stored in _session but not pushed into the SDK user object.
+    final token = await forceRefresh();
+    if (_user == null || token == null) {
+      throw Exception('User is not authenticated');
+    }
     final secret = await _user!.associateSoftwareToken();
     final email = _user?.username ?? '';
     return 'otpauth://totp/LizardNotes:$email'

@@ -19,8 +19,6 @@ class SettingsMfaScanScreen extends ConsumerStatefulWidget {
 }
 
 class _SettingsMfaScanScreenState extends ConsumerState<SettingsMfaScanScreen> {
-  bool _showSecret = false;
-
   @override
   void initState() {
     super.initState();
@@ -94,16 +92,13 @@ class _SettingsMfaScanScreenState extends ConsumerState<SettingsMfaScanScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    TextButton(
-                      onPressed: () =>
-                          setState(() => _showSecret = !_showSecret),
-                      child: Text(
-                        _showSecret
-                            ? 'Hide setup key'
-                            : "Can't scan? Enter setup key manually",
-                      ),
+                    Text(
+                      "Can't scan? Enter this setup key:",
+                      style: LnTextStyles.bodyCompact(color: LnColors.lnText2),
+                      textAlign: TextAlign.center,
                     ),
-                    if (_showSecret && secret != null)
+                    const SizedBox(height: 8),
+                    if (secret != null)
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 8),
                         child: SelectableText(
