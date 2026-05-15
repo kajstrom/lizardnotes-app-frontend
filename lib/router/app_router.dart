@@ -79,7 +79,10 @@ abstract final class AppRouter {
             GoRoute(
               path: 'mfa-setup',
               // /login/mfa-setup itself redirects to the scan step.
-              redirect: (context, state) => RouteNames.mfaSetupScan,
+              redirect: (context, state) =>
+                  state.uri.path == '/login/mfa-setup'
+                      ? RouteNames.mfaSetupScan
+                      : null,
               routes: [
                 GoRoute(
                   path: 'scan',
@@ -147,7 +150,9 @@ abstract final class AppRouter {
                     GoRoute(
                       path: 'mfa-setup',
                       redirect: (context, state) =>
-                          RouteNames.appSettingsMfaScan,
+                          state.uri.path == '/app/settings/mfa-setup'
+                              ? RouteNames.appSettingsMfaScan
+                              : null,
                       routes: [
                         GoRoute(
                           path: 'scan',
