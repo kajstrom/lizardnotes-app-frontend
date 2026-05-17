@@ -50,6 +50,15 @@ class _OtpInputRowState extends State<OtpInputRow> {
           _focusNodes[index - 1].requestFocus();
           return KeyEventResult.handled;
         }
+        if (event is KeyDownEvent &&
+            event.logicalKey == LogicalKeyboardKey.keyV &&
+            (HardwareKeyboard.instance.isControlPressed ||
+                HardwareKeyboard.instance.isMetaPressed)) {
+          Clipboard.getData(Clipboard.kTextPlain).then((data) {
+            if (data?.text != null) _distributeDigits(data!.text!);
+          });
+          return KeyEventResult.handled;
+        }
         return KeyEventResult.ignored;
       };
     }
@@ -66,16 +75,20 @@ class _OtpInputRowState extends State<OtpInputRow> {
     super.dispose();
   }
 
+  void _distributeDigits(String raw) {
+    final digits = raw.replaceAll(RegExp(r'\D'), '');
+    if (digits.isEmpty) return;
+    for (var i = 0; i < _length && i < digits.length; i++) {
+      _controllers[i].text = digits[i];
+    }
+    final next = (digits.length - 1).clamp(0, _length - 1);
+    _focusNodes[next].requestFocus();
+    _maybeComplete();
+  }
+
   void _onChanged(int index, String value) {
     if (value.length > 1) {
-      // Paste: distribute digits across fields.
-      final digits = value.replaceAll(RegExp(r'\D'), '');
-      for (var i = 0; i < _length && i < digits.length; i++) {
-        _controllers[i].text = digits[i];
-      }
-      final next = (digits.length - 1).clamp(0, _length - 1);
-      _focusNodes[next].requestFocus();
-      _maybeComplete();
+      _distributeDigits(value);
       return;
     }
 
@@ -128,7 +141,6 @@ class _OtpInputRowState extends State<OtpInputRow> {
         autofillHints: const [AutofillHints.oneTimeCode],
         inputFormatters: [
           FilteringTextInputFormatter.digitsOnly,
-          LengthLimitingTextInputFormatter(1),
         ],
         style: LnTextStyles.otpDigit(
           color: isFilled ? LnColors.lnAccent2 : LnColors.lnText,
