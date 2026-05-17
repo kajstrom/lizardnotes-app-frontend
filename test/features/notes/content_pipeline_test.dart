@@ -5,21 +5,6 @@ import 'package:lizardnotes_app/features/notes/services/content_pipeline.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('ContentPipeline.fromMarkdown', () {
-    test('empty string returns empty document', () async {
-      final doc = await ContentPipeline.fromMarkdown('');
-      expect(doc.toPlainText().trim(), isEmpty);
-    });
-
-    test('does not crash on unsupported content', () async {
-      // Should fall back to plain text rather than throwing.
-      final doc = await ContentPipeline.fromMarkdown(
-        '<div class="complex">HTML content</div>',
-      );
-      expect(doc, isA<Document>());
-    });
-  });
-
   group('ContentPipeline round-trip', () {
     // Each test converts markdown → Delta → markdown and checks that the
     // key semantic content is preserved in the output.

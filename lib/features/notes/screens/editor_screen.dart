@@ -168,7 +168,8 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     _quillController.removeListener(_onDocumentChanged);
 
     try {
-      final note = await ref.read(apiClientProvider).getNote(noteId);
+      final api = ref.read(apiClientProvider);
+      final note = await api.getNote(noteId);
       // Load attachments alongside the note (fire-and-forget).
       unawaited(
         ref.read(attachmentProvider(noteId).notifier).loadAttachments(),
@@ -176,7 +177,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       final doc = await ContentPipeline.fromMarkdown(
         note.content,
         noteId: noteId,
-        api: ref.read(apiClientProvider),
+        api: api,
       );
       _quillController.document = doc;
       _titleController.text = note.title;

@@ -137,5 +137,57 @@ void main() {
       expect(embed['attachmentId'], 'bad-id');
       expect(embed['url'], '');
     });
+
+    test('resolves two distinct attachment:// refs independently', () async {
+      const markdown =
+          '![First](attachment://id-1)\n\n![Second](attachment://id-2)\n';
+      final api = MockApiClient();
+      when(() => api.getAttachmentDownloadUrl(
+            noteId: 'note-1',
+            attachmentId: 'id-1',
+          )).thenAnswer((_) async => 'https://s3.example.com/one.jpg');
+      when(() => api.getAttachmentDownloadUrl(
+            noteId: 'note-1',
+            attachmentId: 'id-2',
+          )).thenAnswer((_) async => 'https://s3.example.com/two.jpg');
+
+      final doc = await ContentPipeline.fromMarkdown(
+        markdown,
+        noteId: 'note-1',
+        api: api,
+      );
+
+      final imageOps = doc.toDelta().toList().where((op) {
+        final d = op.data;
+        return d is Map && d.containsKey('ln-image');
+      }).toList();
+      expect(imageOps, hasLength(2));
+
+      final embed1 = (imageOps[0].data as Map)['ln-image'] as Map;
+      expect(embed1['attachmentId'], 'id-1');
+      expect(embed1['url'], 'https://s3.example.com/one.jpg');
+      expect(embed1['caption'], 'First');
+
+      final embed2 = (imageOps[1].data as Map)['ln-image'] as Map;
+      expect(embed2['attachmentId'], 'id-2');
+      expect(embed2['url'], 'https://s3.example.com/two.jpg');
+      expect(embed2['caption'], 'Second');
+    });
+
+    test('creates ln-image embed with empty url when api is null', () async {
+      const markdown = '![A photo](attachment://img-xyz)\n';
+
+      final doc = await ContentPipeline.fromMarkdown(markdown);
+
+      final imageOps = doc.toDelta().toList().where((op) {
+        final d = op.data;
+        return d is Map && d.containsKey('ln-image');
+      }).toList();
+      expect(imageOps, hasLength(1));
+      final embed = (imageOps.first.data as Map)['ln-image'] as Map;
+      expect(embed['attachmentId'], 'img-xyz');
+      expect(embed['url'], '');
+      expect(embed['caption'], 'A photo');
+    });
   });
 }

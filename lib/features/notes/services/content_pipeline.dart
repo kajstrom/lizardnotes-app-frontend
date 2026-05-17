@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
 import 'package:lizardnotes_app/api/api_client.dart';
@@ -117,7 +118,8 @@ class ContentPipeline {
       }
 
       return Document.fromDelta(Delta.fromOperations(processedOps));
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('ContentPipeline.fromMarkdown failed: $e\n$st');
       return Document()..insert(0, markdown);
     }
   }
