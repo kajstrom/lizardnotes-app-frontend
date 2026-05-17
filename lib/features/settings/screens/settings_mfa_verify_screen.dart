@@ -26,6 +26,7 @@ class _SettingsMfaVerifyScreenState
     ref.listen<SettingsMfaState>(settingsMfaProvider, (_, next) {
       if (next.step == SettingsMfaStep.success) {
         ref.read(settingsMfaProvider.notifier).reset();
+        ref.invalidate(mfaConfiguredProvider);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Two-factor authentication enabled.'),

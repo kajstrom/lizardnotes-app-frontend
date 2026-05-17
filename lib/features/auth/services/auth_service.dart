@@ -126,6 +126,7 @@ class CognitoAuthService implements AuthService {
       friendlyDeviceName: 'LizardNotes',
     );
     if (!ok) throw Exception('TOTP verification failed');
+    await _user!.setPreferredMFA('SOFTWARE_TOKEN_MFA');
     await markMfaConfigured();
     // Attempt to retrieve session post-setup; not all flows return one here.
     try {

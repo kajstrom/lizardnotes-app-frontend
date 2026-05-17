@@ -30,6 +30,10 @@ class SettingsMfaState {
   }
 }
 
+final mfaConfiguredProvider = FutureProvider<bool>((ref) {
+  return ref.read(authServiceProvider).isMfaConfigured();
+});
+
 final settingsMfaProvider =
     NotifierProvider<SettingsMfaNotifier, SettingsMfaState>(
         SettingsMfaNotifier.new);

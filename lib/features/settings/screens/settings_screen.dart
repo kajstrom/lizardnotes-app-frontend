@@ -7,17 +7,14 @@ import '../../../theme/colour_tokens.dart';
 import '../../../theme/dimensions.dart';
 import '../../../theme/text_styles.dart';
 import '../../auth/providers/auth_provider.dart';
-
-final _mfaConfiguredProvider = FutureProvider<bool>((ref) {
-  return ref.read(authServiceProvider).isMfaConfigured();
-});
+import '../providers/settings_mfa_provider.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final mfaConfigured = ref.watch(_mfaConfiguredProvider);
+    final mfaConfigured = ref.watch(mfaConfiguredProvider);
 
     return Scaffold(
       backgroundColor: LnColors.lnBg,
