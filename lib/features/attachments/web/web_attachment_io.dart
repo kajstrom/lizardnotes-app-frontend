@@ -79,6 +79,10 @@ Future<List<WebPickedFile>> pickWebFiles({required String accept}) {
   return completer.future;
 }
 
+Future<void> openUrlInNewTab(String url) async {
+  web.window.open(url, '_blank');
+}
+
 Future<bool> tryUploadWebBlob({
   required UploadSource source,
   required String url,

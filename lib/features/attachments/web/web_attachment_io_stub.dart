@@ -1,3 +1,5 @@
+import 'package:url_launcher/url_launcher.dart';
+
 import '../providers/attachment_provider.dart';
 
 // Stub used on non-web targets. The real implementation lives in
@@ -21,6 +23,9 @@ class WebPickedFile {
   int get size => throw UnsupportedError('Web only');
   Object get blob => throw UnsupportedError('Web only');
 }
+
+Future<void> openUrlInNewTab(String url) =>
+    launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
 Future<List<WebPickedFile>> pickWebFiles({required String accept}) async =>
     throw UnsupportedError('pickWebFiles is web-only');

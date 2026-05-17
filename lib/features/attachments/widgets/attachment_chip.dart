@@ -59,6 +59,9 @@ class AttachmentChip extends ConsumerWidget {
       BuildContext context, WidgetRef ref, _ChipAction action) async {
     final notifier = ref.read(attachmentProvider(noteId).notifier);
     switch (action) {
+      case _ChipAction.open:
+        await notifier.openAttachment(item.attachment.attachmentId);
+        break;
       case _ChipAction.download:
         await notifier.downloadAttachment(item.attachment.attachmentId);
         break;
@@ -152,7 +155,7 @@ class AttachmentChip extends ConsumerWidget {
 // Popup menu
 // ---------------------------------------------------------------------------
 
-enum _ChipAction { download, copy, remove }
+enum _ChipAction { open, download, copy, remove }
 
 class _ChipMenuButton extends StatelessWidget {
   const _ChipMenuButton({required this.child, required this.onSelected});
@@ -168,6 +171,7 @@ class _ChipMenuButton extends StatelessWidget {
       position: PopupMenuPosition.under,
       onSelected: onSelected,
       itemBuilder: (_) => const [
+        PopupMenuItem(value: _ChipAction.open, child: Text('Open')),
         PopupMenuItem(value: _ChipAction.download, child: Text('Download')),
         PopupMenuItem(value: _ChipAction.copy, child: Text('Copy link')),
         PopupMenuItem(value: _ChipAction.remove, child: Text('Remove')),

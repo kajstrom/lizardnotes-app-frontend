@@ -97,6 +97,12 @@ Future<bool> _defaultUrlOpener(String url) =>
 
 final urlOpenerProvider = Provider<UrlOpener>((_) => _defaultUrlOpener);
 
+typedef TabOpener = Future<void> Function(String url);
+
+Future<void> _defaultTabOpener(String url) => webio.openUrlInNewTab(url);
+
+final tabOpenerProvider = Provider<TabOpener>((_) => _defaultTabOpener);
+
 typedef ClipboardWriter = Future<void> Function(String text);
 
 Future<void> _defaultClipboardWriter(String text) =>
@@ -178,6 +184,7 @@ class AttachmentNotifier extends Notifier<AttachmentState> {
   ApiClient get _api => ref.read(apiClientProvider);
   S3Uploader get _uploader => ref.read(s3UploaderProvider);
   UrlOpener get _opener => ref.read(urlOpenerProvider);
+  TabOpener get _tabOpener => ref.read(tabOpenerProvider);
   ClipboardWriter get _clipboard => ref.read(clipboardWriterProvider);
 
   @override
@@ -285,21 +292,17 @@ class AttachmentNotifier extends Notifier<AttachmentState> {
     }
   }
 
-  Future<void> downloadAttachment(String attachmentId) async {
-    final url = await _api.getAttachmentDownloadUrl(
-      noteId: _noteId,
-      attachmentId: attachmentId,
-    );
-    await _opener(url);
-  }
+  Future<String> _resolveDownloadUrl(String attachmentId) =>
+      _api.getAttachmentDownloadUrl(noteId: _noteId, attachmentId: attachmentId);
 
-  Future<void> copyLink(String attachmentId) async {
-    final url = await _api.getAttachmentDownloadUrl(
-      noteId: _noteId,
-      attachmentId: attachmentId,
-    );
-    await _clipboard(url);
-  }
+  Future<void> downloadAttachment(String attachmentId) async =>
+      _opener(await _resolveDownloadUrl(attachmentId));
+
+  Future<void> openAttachment(String attachmentId) async =>
+      _tabOpener(await _resolveDownloadUrl(attachmentId));
+
+  Future<void> copyLink(String attachmentId) async =>
+      _clipboard(await _resolveDownloadUrl(attachmentId));
 
   Future<void> deleteAttachment(String attachmentId) async {
     final previous = List<AttachmentItem>.unmodifiable(state.items);
