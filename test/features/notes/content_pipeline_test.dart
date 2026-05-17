@@ -6,14 +6,14 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('ContentPipeline.fromMarkdown', () {
-    test('empty string returns empty document', () {
-      final doc = ContentPipeline.fromMarkdown('');
+    test('empty string returns empty document', () async {
+      final doc = await ContentPipeline.fromMarkdown('');
       expect(doc.toPlainText().trim(), isEmpty);
     });
 
-    test('does not crash on unsupported content', () {
+    test('does not crash on unsupported content', () async {
       // Should fall back to plain text rather than throwing.
-      final doc = ContentPipeline.fromMarkdown(
+      final doc = await ContentPipeline.fromMarkdown(
         '<div class="complex">HTML content</div>',
       );
       expect(doc, isA<Document>());
@@ -24,93 +24,93 @@ void main() {
     // Each test converts markdown → Delta → markdown and checks that the
     // key semantic content is preserved in the output.
 
-    test('plain paragraph', () {
+    test('plain paragraph', () async {
       const md = 'Hello, world.';
-      final result = _roundTrip(md);
+      final result = await _roundTrip(md);
       // DeltaToMarkdown escapes punctuation (e.g. '.' → '\.'), so check
       // for the core word content rather than exact string equality.
       expect(result, contains('Hello, world'));
     });
 
-    test('bold inline', () {
+    test('bold inline', () async {
       const md = 'This is **bold** text.';
-      final result = _roundTrip(md);
+      final result = await _roundTrip(md);
       expect(result, contains('bold'));
       // Bold markers should be present in the output.
       expect(result, contains('**'));
     });
 
-    test('italic inline', () {
+    test('italic inline', () async {
       const md = 'This is *italic* text.';
-      final result = _roundTrip(md);
+      final result = await _roundTrip(md);
       expect(result, contains('italic'));
       expect(result, anyOf(contains('*'), contains('_')));
     });
 
-    test('h2 heading', () {
+    test('h2 heading', () async {
       const md = '## Section Heading';
-      final result = _roundTrip(md);
+      final result = await _roundTrip(md);
       expect(result, contains('Section Heading'));
       expect(result, contains('##'));
     });
 
-    test('h3 heading', () {
+    test('h3 heading', () async {
       const md = '### Sub Heading';
-      final result = _roundTrip(md);
+      final result = await _roundTrip(md);
       expect(result, contains('Sub Heading'));
       expect(result, contains('###'));
     });
 
-    test('unordered list', () {
+    test('unordered list', () async {
       const md = '- Apple\n- Banana\n- Cherry';
-      final result = _roundTrip(md);
+      final result = await _roundTrip(md);
       expect(result, contains('Apple'));
       expect(result, contains('Banana'));
       expect(result, contains('Cherry'));
     });
 
-    test('ordered list', () {
+    test('ordered list', () async {
       const md = '1. First\n2. Second\n3. Third';
-      final result = _roundTrip(md);
+      final result = await _roundTrip(md);
       expect(result, contains('First'));
       expect(result, contains('Second'));
       expect(result, contains('Third'));
     });
 
-    test('blockquote', () {
+    test('blockquote', () async {
       const md = '> This is a quote.';
-      final result = _roundTrip(md);
+      final result = await _roundTrip(md);
       expect(result, contains('This is a quote'));
     });
 
-    test('inline code', () {
+    test('inline code', () async {
       const md = 'Use `print()` to debug.';
-      final result = _roundTrip(md);
+      final result = await _roundTrip(md);
       expect(result, contains('print()'));
     });
 
-    test('code block', () {
+    test('code block', () async {
       const md = '```\nconst x = 1;\n```';
-      final result = _roundTrip(md);
+      final result = await _roundTrip(md);
       expect(result, contains('const x = 1;'));
     });
 
-    test('double quotes round-trip without HTML encoding', () {
+    test('double quotes round-trip without HTML encoding', () async {
       const md = 'She said "hello world".';
-      final result = _roundTrip(md);
+      final result = await _roundTrip(md);
       expect(result, contains('"hello world"'));
       expect(result, isNot(contains('&quot;')));
     });
 
-    test('ampersand round-trip without HTML encoding', () {
+    test('ampersand round-trip without HTML encoding', () async {
       const md = 'Fish & chips.';
-      final result = _roundTrip(md);
+      final result = await _roundTrip(md);
       expect(result, contains('Fish'));
       expect(result, contains('chips'));
       expect(result, isNot(contains('&amp;')));
     });
 
-    test('multiple blocks preserve all content', () {
+    test('multiple blocks preserve all content', () async {
       const md = '''
 ## Heading
 
@@ -119,7 +119,7 @@ Paragraph text.
 - Item one
 - Item two
 ''';
-      final result = _roundTrip(md);
+      final result = await _roundTrip(md);
       expect(result, contains('Heading'));
       expect(result, contains('Paragraph text'));
       expect(result, contains('Item one'));
@@ -142,7 +142,7 @@ Paragraph text.
   });
 }
 
-String _roundTrip(String markdown) {
-  final doc = ContentPipeline.fromMarkdown(markdown);
+Future<String> _roundTrip(String markdown) async {
+  final doc = await ContentPipeline.fromMarkdown(markdown);
   return ContentPipeline.toMarkdown(doc);
 }

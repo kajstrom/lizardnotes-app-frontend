@@ -1,5 +1,6 @@
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
+import 'package:lizardnotes_app/api/api_client.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:markdown_quill/markdown_quill.dart';
 
@@ -26,13 +27,97 @@ class ContentPipeline {
 
   static final _quillToMd = DeltaToMarkdown();
 
-  static Document fromMarkdown(String markdown) {
+  static final _attachmentRef =
+      RegExp(r'!\[([^\]]*)\]\(attachment://([^)]+)\)');
+
+  static Future<Document> fromMarkdown(
+    String markdown, {
+    String? noteId,
+    ApiClient? api,
+  }) async {
     if (markdown.trim().isEmpty) return Document();
+
+    final matches = _attachmentRef.allMatches(markdown).toList();
+
+    // Build a lookup: attachmentId → caption
+    final idToCaption = <String, String>{
+      for (final m in matches) m.group(2)!: m.group(1) ?? '',
+    };
+    final idToUrl = <String, String>{};
+
+    if (matches.isNotEmpty && noteId != null && api != null) {
+      final uniqueIds = idToCaption.keys.toList();
+      final urlEntries = await Future.wait(
+        uniqueIds.map((id) async {
+          try {
+            final url = await api.getAttachmentDownloadUrl(
+              noteId: noteId,
+              attachmentId: id,
+            );
+            return MapEntry(id, url);
+          } catch (_) {
+            return MapEntry(id, '');
+          }
+        }),
+      );
+      idToUrl.addEntries(urlEntries);
+    }
+
     try {
-      final delta = _mdToQuill.convert(markdown);
-      return Document.fromDelta(delta);
+      // Replace attachment:// URLs with resolved presigned URLs so that
+      // MarkdownToDelta can parse them as standard image operations.
+      // We track presignedUrl → attachmentId for the post-processing step.
+      final urlToId = <String, String>{};
+      String processedMarkdown = markdown;
+      for (final entry in idToUrl.entries) {
+        final id = entry.key;
+        final url = entry.value;
+        if (url.isNotEmpty) {
+          processedMarkdown = processedMarkdown.replaceAll(
+            'attachment://$id',
+            url,
+          );
+          urlToId[url] = id;
+        }
+      }
+      // IDs with no resolved URL keep the attachment:// form in the markdown.
+      for (final id in idToCaption.keys) {
+        if (!idToUrl.containsKey(id) || idToUrl[id]!.isEmpty) {
+          urlToId['attachment://$id'] = id;
+        }
+      }
+
+      final delta = _mdToQuill.convert(processedMarkdown);
+
+      // Post-process delta: image ops whose URL maps to one of our attachment
+      // IDs are converted to ln-image embeds.
+      final processedOps = <Operation>[];
+      for (final op in delta.toList()) {
+        final data = op.data;
+        if (data is Map) {
+          final imageUrl = data['image'] as String?;
+          if (imageUrl != null) {
+            String? id = urlToId[imageUrl];
+            if (id == null && imageUrl.startsWith('attachment://')) {
+              id = imageUrl.substring('attachment://'.length);
+            }
+            if (id != null) {
+              processedOps.add(Operation.insert({
+                'ln-image': {
+                  'attachmentId': id,
+                  'url': idToUrl[id] ?? '',
+                  'caption': idToCaption[id] ?? '',
+                },
+              }));
+              continue;
+            }
+          }
+        }
+        processedOps.add(op);
+      }
+
+      return Document.fromDelta(Delta.fromOperations(processedOps));
     } catch (_) {
-      // Fallback: treat unsupported content as plain text rather than crashing.
       return Document()..insert(0, markdown);
     }
   }

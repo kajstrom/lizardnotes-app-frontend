@@ -173,7 +173,11 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       unawaited(
         ref.read(attachmentProvider(noteId).notifier).loadAttachments(),
       );
-      final doc = ContentPipeline.fromMarkdown(note.content);
+      final doc = await ContentPipeline.fromMarkdown(
+        note.content,
+        noteId: noteId,
+        api: ref.read(apiClientProvider),
+      );
       _quillController.document = doc;
       _titleController.text = note.title;
       final count = _countParagraphs(doc);
