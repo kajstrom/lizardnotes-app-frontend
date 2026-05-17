@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../auth/services/auth_service.dart';
 
-enum SettingsMfaStep { idle, loading, scan, verify, success, error }
+enum SettingsMfaStep { idle, loading, scan, verify, success, disabled, error }
 
 class SettingsMfaState {
   const SettingsMfaState({
@@ -72,6 +72,19 @@ class SettingsMfaNotifier extends Notifier<SettingsMfaState> {
     } catch (e) {
       state = state.copyWith(
         step: SettingsMfaStep.verify,
+        errorMessage: _readable(e),
+      );
+    }
+  }
+
+  Future<void> disableMfa() async {
+    state = state.copyWith(step: SettingsMfaStep.loading, clearError: true);
+    try {
+      await _service.disableMfa();
+      state = state.copyWith(step: SettingsMfaStep.disabled);
+    } catch (e) {
+      state = state.copyWith(
+        step: SettingsMfaStep.error,
         errorMessage: _readable(e),
       );
     }

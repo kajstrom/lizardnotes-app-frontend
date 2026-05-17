@@ -110,6 +110,12 @@ class FakeAuthService implements AuthService {
 
   @override
   Future<void> markMfaConfigured() async {}
+
+  @override
+  Future<void> clearMfaConfigured() async {}
+
+  @override
+  Future<void> disableMfa() async {}
 }
 
 // ---------------------------------------------------------------------------

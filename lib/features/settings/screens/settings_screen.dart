@@ -40,8 +40,13 @@ class SettingsScreen extends ConsumerWidget {
                         children: [
                           _MfaRow(
                             mfaConfigured: mfaConfigured,
-                            onTap: () =>
-                                context.go(RouteNames.appSettingsMfaScan),
+                            onTap: mfaConfigured.whenOrNull(
+                              data: (enabled) => () => context.go(
+                                enabled
+                                    ? RouteNames.appSettingsMfaManage
+                                    : RouteNames.appSettingsMfaScan,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -135,7 +140,7 @@ class _SettingsCard extends StatelessWidget {
 class _MfaRow extends StatelessWidget {
   const _MfaRow({required this.mfaConfigured, required this.onTap});
   final AsyncValue<bool> mfaConfigured;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -186,13 +191,13 @@ class _SettingsRow extends StatelessWidget {
     required this.label,
     this.labelColor = LnColors.lnText,
     this.trailing,
-    required this.onTap,
+    this.onTap,
   });
 
   final String label;
   final Color labelColor;
   final Widget? trailing;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {

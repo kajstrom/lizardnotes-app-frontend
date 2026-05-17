@@ -12,6 +12,7 @@ import '../features/folders/screens/folder_list_screen.dart';
 import '../features/notes/screens/editor_screen.dart';
 import '../features/notes/screens/note_list_screen.dart';
 import '../features/search/screens/search_screen.dart';
+import '../features/settings/screens/settings_mfa_manage_screen.dart';
 import '../features/settings/screens/settings_mfa_scan_screen.dart';
 import '../features/settings/screens/settings_mfa_verify_screen.dart';
 import '../features/settings/screens/settings_screen.dart';
@@ -34,6 +35,7 @@ abstract final class RouteNames {
   static const String appSettings = '/app/settings';
   static const String appSettingsMfaScan = '/app/settings/mfa-setup/scan';
   static const String appSettingsMfaVerify = '/app/settings/mfa-setup/verify';
+  static const String appSettingsMfaManage = '/app/settings/mfa-manage';
 }
 
 abstract final class AppRouter {
@@ -165,6 +167,11 @@ abstract final class AppRouter {
                               const SettingsMfaVerifyScreen(),
                         ),
                       ],
+                    ),
+                    GoRoute(
+                      path: 'mfa-manage',
+                      builder: (context, state) =>
+                          const SettingsMfaManageScreen(),
                     ),
                   ],
                 ),

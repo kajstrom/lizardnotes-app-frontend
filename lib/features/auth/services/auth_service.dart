@@ -32,6 +32,12 @@ abstract class AuthService {
   /// Persists that MFA setup is complete. Called after [verifyMfaSetup].
   Future<void> markMfaConfigured();
 
+  /// Clears the local MFA-configured flag. Called after [disableMfa].
+  Future<void> clearMfaConfigured();
+
+  /// Disables TOTP MFA in Cognito and clears the local configured flag.
+  Future<void> disableMfa();
+
   /// Returns a valid access JWT, refreshing the session if needed.
   ///
   /// Returns `null` if no session is available or the refresh token has
@@ -147,6 +153,22 @@ class CognitoAuthService implements AuthService {
   Future<void> markMfaConfigured() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_kMfaConfigured, true);
+  }
+
+  @override
+  Future<void> clearMfaConfigured() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kMfaConfigured);
+  }
+
+  @override
+  Future<void> disableMfa() async {
+    final token = await forceRefresh();
+    if (_user == null || token == null) {
+      throw Exception('User is not authenticated');
+    }
+    await _user!.setPreferredMFA('NOMFA');
+    await clearMfaConfigured();
   }
 
   @override
