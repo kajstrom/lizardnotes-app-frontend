@@ -19,6 +19,7 @@ class ContentPipeline {
   static final _mdToQuill = MarkdownToDelta(
     markdownDocument: md.Document(
       extensionSet: md.ExtensionSet.gitHubFlavored,
+      encodeHtml: false,
     ),
   );
 

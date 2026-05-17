@@ -95,6 +95,21 @@ void main() {
       expect(result, contains('const x = 1;'));
     });
 
+    test('double quotes round-trip without HTML encoding', () {
+      const md = 'She said "hello world".';
+      final result = _roundTrip(md);
+      expect(result, contains('"hello world"'));
+      expect(result, isNot(contains('&quot;')));
+    });
+
+    test('ampersand round-trip without HTML encoding', () {
+      const md = 'Fish & chips.';
+      final result = _roundTrip(md);
+      expect(result, contains('Fish'));
+      expect(result, contains('chips'));
+      expect(result, isNot(contains('&amp;')));
+    });
+
     test('multiple blocks preserve all content', () {
       const md = '''
 ## Heading
