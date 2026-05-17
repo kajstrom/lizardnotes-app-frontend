@@ -57,9 +57,11 @@ void main() {
 
       final result = ContentPipeline.toMarkdown(doc);
 
-      expect(result, contains('Before'));
-      expect(result, contains('![A shot](attachment://img-1)'));
-      expect(result, contains('After'));
+      final idxBefore = result.indexOf('Before');
+      final idxImage = result.indexOf('![A shot](attachment://img-1)');
+      final idxAfter = result.indexOf('After');
+      expect(idxBefore, lessThan(idxImage));
+      expect(idxImage, lessThan(idxAfter));
     });
   });
 }

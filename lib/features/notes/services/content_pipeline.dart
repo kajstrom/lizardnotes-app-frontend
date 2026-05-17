@@ -63,13 +63,24 @@ class ContentPipeline {
       final op = ops[i];
       final data = op.data;
       if (data is Map && data.containsKey('ln-image')) {
-        flushPending();
         final embed = Map<String, dynamic>.from(data['ln-image'] as Map);
-        final id = embed['attachmentId'] as String;
+        final id = embed['attachmentId'] as String? ?? '';
+        if (id.isEmpty) {
+          pendingOps.add(op);
+          i++;
+          continue;
+        }
+        flushPending();
         final caption = (embed['caption'] as String?) ?? '';
         result.write('![$caption](attachment://$id)\n\n');
-        // Skip the block-terminator \n that follows the embed, if present.
-        if (i + 1 < ops.length && ops[i + 1].data == '\n') i++;
+        // Skip the block-terminator \n that follows the embed, if present,
+        // but only if it carries no block-level formatting attributes.
+        if (i + 1 < ops.length &&
+            ops[i + 1].data == '\n' &&
+            (ops[i + 1].attributes == null ||
+                ops[i + 1].attributes!.isEmpty)) {
+          i++;
+        }
       } else {
         pendingOps.add(op);
       }
