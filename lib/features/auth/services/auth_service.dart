@@ -75,6 +75,9 @@ class CognitoAuthService implements AuthService {
   static const _kUsername = 'auth_username';
   static const _kMfaConfigured = 'auth_mfa_configured';
 
+  static const _mfaTypeSoftwareToken = 'SOFTWARE_TOKEN_MFA';
+  static const _mfaTypeNone = 'NOMFA';
+
   @override
   CognitoUserSession? get currentSession => _session;
 
@@ -132,7 +135,7 @@ class CognitoAuthService implements AuthService {
       friendlyDeviceName: 'LizardNotes',
     );
     if (!ok) throw Exception('TOTP verification failed');
-    await _user!.setPreferredMFA('SOFTWARE_TOKEN_MFA');
+    await _user!.setPreferredMFA(_mfaTypeSoftwareToken);
     await markMfaConfigured();
     // Attempt to retrieve session post-setup; not all flows return one here.
     try {
@@ -167,13 +170,13 @@ class CognitoAuthService implements AuthService {
     if (_user == null || token == null) {
       throw Exception('User is not authenticated');
     }
-    await _user!.setPreferredMFA('NOMFA');
+    await _user!.setPreferredMFA(_mfaTypeNone);
     await clearMfaConfigured();
   }
 
   @override
   Future<SignInResult> confirmMfaCode(String code) async {
-    _session = await _user!.sendMFACode(code, 'SOFTWARE_TOKEN_MFA');
+    _session = await _user!.sendMFACode(code, _mfaTypeSoftwareToken);
     if (_session != null) await _persist();
     return SignInResult.authenticated;
   }
