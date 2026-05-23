@@ -16,7 +16,7 @@ import 'image_picker_dialog.dart';
 ///   desktop floating overlay.
 /// - [scrollable] = true: horizontally scrollable row for the mobile docked
 ///   bar.
-class FormatToolbar extends ConsumerStatefulWidget {
+class FormatToolbar extends StatefulWidget {
   const FormatToolbar({
     super.key,
     required this.controller,
@@ -33,10 +33,10 @@ class FormatToolbar extends ConsumerStatefulWidget {
   final FocusNode? editorFocusNode;
 
   @override
-  ConsumerState<FormatToolbar> createState() => _FormatToolbarState();
+  State<FormatToolbar> createState() => _FormatToolbarState();
 }
 
-class _FormatToolbarState extends ConsumerState<FormatToolbar> {
+class _FormatToolbarState extends State<FormatToolbar> {
   // Cached selection (any kind, including collapsed). A toolbar tap can shift
   // focus and move the live selection before onTap fires, so we restore from
   // this cache when applying formats.
@@ -156,7 +156,7 @@ class _FormatToolbarState extends ConsumerState<FormatToolbar> {
 
   Future<void> _insertImage(AttachmentItem item) async {
     try {
-      final api = ref.read(apiClientProvider);
+      final api = ProviderScope.containerOf(context).read(apiClientProvider);
       final url = await api.getAttachmentDownloadUrl(
         noteId: widget.noteId,
         attachmentId: item.attachment.attachmentId,
