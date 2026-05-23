@@ -117,27 +117,7 @@ class ContentPipeline {
         processedOps.add(op);
       }
 
-      final finalOps = <Operation>[];
-      for (int j = 0; j < processedOps.length; j++) {
-        finalOps.add(processedOps[j]);
-        final d = processedOps[j].data;
-        if (d is Map && d.containsKey('ln-image')) {
-          // Keep the mandatory block terminator
-          if (j + 1 < processedOps.length &&
-              processedOps[j + 1].data == '\n') {
-            finalOps.add(processedOps[j + 1]);
-            j++;
-          }
-          // Skip extra bare '\n' ops produced by \n\n in the markdown source
-          while (j + 1 < processedOps.length &&
-              processedOps[j + 1].data == '\n' &&
-              (processedOps[j + 1].attributes == null ||
-                  processedOps[j + 1].attributes!.isEmpty)) {
-            j++;
-          }
-        }
-      }
-      return Document.fromDelta(Delta.fromOperations(finalOps));
+      return Document.fromDelta(Delta.fromOperations(processedOps));
     } catch (e, st) {
       debugPrint('ContentPipeline.fromMarkdown failed: $e\n$st');
       return Document()..insert(0, markdown);
