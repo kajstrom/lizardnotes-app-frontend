@@ -1,16 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill_test/flutter_quill_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:lizardnotes_app/features/notes/widgets/format_toolbar.dart';
 import 'package:lizardnotes_app/theme/colour_tokens.dart';
 
-Widget _wrap(QuillController controller) {
-  return MaterialApp(
-    home: Scaffold(
-      body: SizedBox(
-        height: 40,
-        child: FormatToolbar(controller: controller),
+Widget _wrap(QuillController controller, {String noteId = 'note-1'}) {
+  return ProviderScope(
+    child: MaterialApp(
+      home: Scaffold(
+        body: SizedBox(
+          height: 40,
+          child: FormatToolbar(controller: controller, noteId: noteId),
+        ),
       ),
     ),
   );
@@ -19,25 +22,29 @@ Widget _wrap(QuillController controller) {
 /// Mirrors the editor-screen layout: a docked format toolbar above a
 /// QuillEditor. Used to verify the toolbar does not interfere with
 /// keyboard input on the editor.
-Widget _wrapWithEditor(QuillController controller, FocusNode editorFocus) {
-  return MaterialApp(
-    home: Scaffold(
-      body: Column(
-        children: [
-          SizedBox(
-            height: 40,
-            child: FormatToolbar(
-              controller: controller,
-              editorFocusNode: editorFocus,
+Widget _wrapWithEditor(QuillController controller, FocusNode editorFocus,
+    {String noteId = 'note-1'}) {
+  return ProviderScope(
+    child: MaterialApp(
+      home: Scaffold(
+        body: Column(
+          children: [
+            SizedBox(
+              height: 40,
+              child: FormatToolbar(
+                controller: controller,
+                noteId: noteId,
+                editorFocusNode: editorFocus,
+              ),
             ),
-          ),
-          Expanded(
-            child: QuillEditor.basic(
-              controller: controller,
-              focusNode: editorFocus,
+            Expanded(
+              child: QuillEditor.basic(
+                controller: controller,
+                focusNode: editorFocus,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     ),
   );
@@ -406,6 +413,15 @@ void main() {
       await tester.tap(find.text('link'));
       await tester.pump();
       expect(find.text('Insert link'), findsNothing);
+    });
+
+    testWidgets('renders image button', (tester) async {
+      final controller = QuillController.basic();
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(_wrap(controller));
+
+      expect(find.byIcon(Icons.image_outlined), findsOneWidget);
     });
   });
 }

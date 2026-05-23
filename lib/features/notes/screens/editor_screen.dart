@@ -323,6 +323,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
             _DockedFormatBar(
               controller: _quillController,
               editorFocusNode: _editorFocus,
+              noteId: _loadedNoteId!,
             ),
           // ── Editor body ──────────────────────────────────────────────────
           Expanded(
@@ -353,6 +354,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
             _DockedFormatBar(
               controller: _quillController,
               editorFocusNode: _editorFocus,
+              noteId: _loadedNoteId!,
               scrollable: true,
             ),
         ],
@@ -987,11 +989,13 @@ class _DockedFormatBar extends StatelessWidget {
   const _DockedFormatBar({
     required this.controller,
     required this.editorFocusNode,
+    required this.noteId,
     this.scrollable = false,
   });
 
   final QuillController controller;
   final FocusNode editorFocusNode;
+  final String noteId;
   final bool scrollable;
 
   @override
@@ -1007,6 +1011,7 @@ class _DockedFormatBar extends StatelessWidget {
       ),
       child: FormatToolbar(
         controller: controller,
+        noteId: noteId,
         scrollable: scrollable,
         editorFocusNode: editorFocusNode,
       ),
