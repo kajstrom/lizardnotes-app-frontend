@@ -24,6 +24,7 @@ import '../models/note.dart';
 import '../providers/note_provider.dart';
 import '../services/content_pipeline.dart';
 import '../widgets/format_toolbar.dart';
+import '../widgets/ln_image_embed.dart';
 import '../widgets/note_actions_sheet.dart';
 import '../widgets/note_context_menu.dart';
 
@@ -689,6 +690,7 @@ class _EditorBody extends StatelessWidget {
                   autoFocus: false,
                   placeholder: 'Start writing\u2026',
                   customStyles: _buildStyles(),
+                  embedBuilders: [const LnImageEmbed()],
                   onSingleLongTapEnd: _isMobileWeb
                       ? (details, _) {
                           _showEditorClipboardMenu(
