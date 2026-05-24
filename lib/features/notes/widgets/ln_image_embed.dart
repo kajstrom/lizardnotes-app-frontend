@@ -35,6 +35,7 @@ class LnImageEmbed extends EmbedBuilder {
       data: data,
       controller: embedContext.controller,
       readOnly: embedContext.readOnly,
+      nodeOffset: embedContext.node.documentOffset,
     );
   }
 }
@@ -44,11 +45,13 @@ class _LnImageEmbedBody extends StatefulWidget {
     required this.data,
     required this.controller,
     required this.readOnly,
+    required this.nodeOffset,
   });
 
   final Map<String, dynamic> data;
   final QuillController controller;
   final bool readOnly;
+  final int nodeOffset;
 
   @override
   State<_LnImageEmbedBody> createState() => _LnImageEmbedBodyState();
@@ -57,16 +60,23 @@ class _LnImageEmbedBody extends StatefulWidget {
 class _LnImageEmbedBodyState extends State<_LnImageEmbedBody> {
   late final TextEditingController _captionController;
   Timer? _captionDebounce;
+  late int _nodeOffset;
 
-  String get _attachmentId => widget.data['attachmentId'] as String? ?? '';
   String get _url => widget.data['url'] as String? ?? '';
 
   @override
   void initState() {
     super.initState();
+    _nodeOffset = widget.nodeOffset;
     _captionController = TextEditingController(
       text: widget.data['caption'] as String? ?? '',
     );
+  }
+
+  @override
+  void didUpdateWidget(_LnImageEmbedBody old) {
+    super.didUpdateWidget(old);
+    _nodeOffset = widget.nodeOffset;
   }
 
   @override
@@ -84,24 +94,24 @@ class _LnImageEmbedBodyState extends State<_LnImageEmbedBody> {
   }
 
   void _updateEmbedField(String field, Object value) {
-    final delta = widget.controller.document.toDelta();
+    final ops = widget.controller.document.toDelta().toList();
     var offset = 0;
-    for (final op in delta.toList()) {
-      final opData = op.data;
-      if (opData is Map && opData.containsKey('ln-image')) {
-        final embed = opData['ln-image'] as Map;
-        if (embed['attachmentId'] == _attachmentId) {
+    for (final op in ops) {
+      if (offset == _nodeOffset) {
+        final opData = op.data;
+        if (opData is Map && opData.containsKey('ln-image')) {
+          final embed = opData['ln-image'] as Map;
           final updated = Map<String, dynamic>.from(
             Map<String, dynamic>.from(embed),
           )..[field] = value;
           widget.controller.replaceText(
-            offset,
+            _nodeOffset,
             1,
             Embeddable('ln-image', updated),
             null,
           );
-          return;
         }
+        return;
       }
       offset += op.length ?? 1;
     }

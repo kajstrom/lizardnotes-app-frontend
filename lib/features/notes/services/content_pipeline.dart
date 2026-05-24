@@ -1,3 +1,5 @@
+import 'dart:collection';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_quill/quill_delta.dart';
@@ -28,8 +30,18 @@ class ContentPipeline {
 
   static final _quillToMd = DeltaToMarkdown();
 
+  // Handles escape sequences in alt-text (e.g. \] for literal bracket).
   static final _attachmentRef =
-      RegExp(r'!\[([^\]]*)\]\(attachment://([^)]+)\)');
+      RegExp(r'!\[((?:[^\]\\]|\\.)*)\]\(attachment://([^)]+)\)');
+
+  static String _escapeAltText(String s) => s
+      .replaceAll(r'\', r'\\') // must be first
+      .replaceAll(']', r'\]')
+      .replaceAll('\n', ' ')
+      .replaceAll('\r', '');
+
+  static String _unescapeAltText(String s) =>
+      s.replaceAllMapped(RegExp(r'\\(.)'), (m) => m.group(1)!);
 
   static Future<Document> fromMarkdown(
     String markdown, {
@@ -40,10 +52,16 @@ class ContentPipeline {
 
     final matches = _attachmentRef.allMatches(markdown).toList();
 
-    // Build a lookup: attachmentId → caption
-    final idToCaption = <String, String>{
-      for (final m in matches) m.group(2)!: m.group(1) ?? '',
-    };
+    // Build a lookup: attachmentId → ordered captions (one per occurrence).
+    // Using a queue so the same attachment embedded multiple times with
+    // different captions round-trips correctly — each occurrence consumes
+    // its own caption in document order.
+    final idToCaption = <String, Queue<String>>{};
+    for (final m in matches) {
+      idToCaption
+          .putIfAbsent(m.group(2)!, Queue<String>.new)
+          .add(_unescapeAltText(m.group(1) ?? ''));
+    }
     final idToUrl = <String, String>{};
 
     if (matches.isNotEmpty && noteId != null && api != null) {
@@ -67,26 +85,22 @@ class ContentPipeline {
     try {
       // Replace attachment:// URLs with resolved presigned URLs so that
       // MarkdownToDelta can parse them as standard image operations.
-      // We track presignedUrl → attachmentId for the post-processing step.
+      // A single replaceAllMapped pass avoids prefix-collision bugs
+      // (e.g. id-1 matching inside id-10).
       final urlToId = <String, String>{};
-      String processedMarkdown = markdown;
-      for (final entry in idToUrl.entries) {
-        final id = entry.key;
-        final url = entry.value;
-        if (url.isNotEmpty) {
-          processedMarkdown = processedMarkdown.replaceAll(
-            'attachment://$id',
-            url,
-          );
+      final processedMarkdown = markdown.replaceAllMapped(_attachmentRef, (m) {
+        final id = m.group(2)!;
+        final url = idToUrl[id];
+        if (url != null && url.isNotEmpty) {
           urlToId[url] = id;
+          // Alt-text content is recovered from idToCaption; keep it as-is.
+          return '![${m.group(1) ?? ''}]($url)';
         }
-      }
-      // IDs with no resolved URL keep the attachment:// form in the markdown.
-      for (final id in idToCaption.keys) {
-        if (!idToUrl.containsKey(id) || idToUrl[id]!.isEmpty) {
-          urlToId['attachment://$id'] = id;
-        }
-      }
+        // No presigned URL — keep the attachment:// form; post-processing
+        // will still convert this to an ln-image embed.
+        urlToId['attachment://$id'] = id;
+        return m.group(0)!;
+      });
 
       final delta = _mdToQuill.convert(processedMarkdown);
 
@@ -103,11 +117,14 @@ class ContentPipeline {
               id = imageUrl.substring('attachment://'.length);
             }
             if (id != null) {
+              final queue = idToCaption[id];
               processedOps.add(Operation.insert({
                 'ln-image': {
                   'attachmentId': id,
                   'url': idToUrl[id] ?? '',
-                  'caption': idToCaption[id] ?? '',
+                  'caption': (queue?.isNotEmpty == true)
+                      ? queue!.removeFirst()
+                      : '',
                 },
               }));
               continue;
@@ -159,7 +176,7 @@ class ContentPipeline {
         }
         flushPending();
         final caption = (embed['caption'] as String?) ?? '';
-        result.write('![$caption](attachment://$id)\n\n');
+        result.write('![${_escapeAltText(caption)}](attachment://$id)\n\n');
         // Skip the block-terminator \n that follows the embed, if present,
         // but only if it carries no block-level formatting attributes.
         if (i + 1 < ops.length &&
