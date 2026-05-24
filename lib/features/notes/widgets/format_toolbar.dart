@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quill/flutter_quill.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../api/api_client.dart';
 import '../../../theme/colour_tokens.dart';
 import '../../../theme/dimensions.dart';
+import '../../attachments/providers/attachment_provider.dart';
+import 'image_picker_dialog.dart';
 
 /// Format toolbar for the WYSIWYG editor.
 ///
@@ -16,11 +20,13 @@ class FormatToolbar extends StatefulWidget {
   const FormatToolbar({
     super.key,
     required this.controller,
+    required this.noteId,
     this.scrollable = false,
     this.editorFocusNode,
   });
 
   final QuillController controller;
+  final String noteId;
   final bool scrollable;
   /// When provided, focus is restored to the editor after every format action.
   /// This prevents the toolbar from permanently stealing focus on web.
@@ -139,6 +145,46 @@ class _FormatToolbarState extends State<FormatToolbar> {
     widget.controller.formatText(sel.start, sel.end - sel.start, attr);
   }
 
+  Future<void> _openImagePicker() async {
+    final selected = await showImagePickerDialog(
+      context: context,
+      noteId: widget.noteId,
+    );
+    if (selected == null || !mounted) return;
+    await _insertImage(selected);
+  }
+
+  Future<void> _insertImage(AttachmentItem item) async {
+    try {
+      final api = ProviderScope.containerOf(context).read(apiClientProvider);
+      final url = await api.getAttachmentDownloadUrl(
+        noteId: widget.noteId,
+        attachmentId: item.attachment.attachmentId,
+      );
+      if (!mounted) return;
+      final sel = _savedSelection ?? widget.controller.selection;
+      final index = sel.isCollapsed ? sel.baseOffset : sel.start;
+      final length = sel.isCollapsed ? 0 : sel.end - sel.start;
+      widget.controller.replaceText(
+        index,
+        length,
+        Embeddable('ln-image', {
+          'attachmentId': item.attachment.attachmentId,
+          'url': url,
+          'caption': '',
+        }),
+        null,
+      );
+      widget.editorFocusNode?.requestFocus();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to insert image')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final v = _lastVisual;
@@ -195,6 +241,8 @@ class _FormatToolbarState extends State<FormatToolbar> {
         disabled: v.linkDisabled,
         onTap: _applyLink,
       ),
+      const _ToolbarDivider(),
+      _ImageToolbarButton(onTap: _openImagePicker),
     ];
 
     // ExcludeFocus prevents any tap on the toolbar from stealing focus away
@@ -465,6 +513,51 @@ class _LinkDialog extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Image toolbar button
+// ---------------------------------------------------------------------------
+
+class _ImageToolbarButton extends StatefulWidget {
+  const _ImageToolbarButton({required this.onTap});
+
+  // VoidCallback (fire-and-forget) is safe here because _openImagePicker
+  // catches all async errors internally via try/catch in _insertImage.
+  final VoidCallback onTap;
+
+  @override
+  State<_ImageToolbarButton> createState() => _ImageToolbarButtonState();
+}
+
+class _ImageToolbarButtonState extends State<_ImageToolbarButton> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 80),
+          margin: const EdgeInsets.symmetric(horizontal: 1, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          decoration: BoxDecoration(
+            color: _hovered ? LnColors.lnSurface3 : Colors.transparent,
+            borderRadius: BorderRadius.circular(LnDims.r4),
+          ),
+          child: const Icon(
+            Icons.image_outlined,
+            size: 16,
+            color: LnColors.lnText2,
+          ),
+        ),
+      ),
     );
   }
 }

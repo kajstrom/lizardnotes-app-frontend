@@ -24,6 +24,7 @@ import '../models/note.dart';
 import '../providers/note_provider.dart';
 import '../services/content_pipeline.dart';
 import '../widgets/format_toolbar.dart';
+import '../widgets/ln_image_embed.dart';
 import '../widgets/note_actions_sheet.dart';
 import '../widgets/note_context_menu.dart';
 
@@ -168,12 +169,17 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     _quillController.removeListener(_onDocumentChanged);
 
     try {
-      final note = await ref.read(apiClientProvider).getNote(noteId);
+      final api = ref.read(apiClientProvider);
+      final note = await api.getNote(noteId);
       // Load attachments alongside the note (fire-and-forget).
       unawaited(
         ref.read(attachmentProvider(noteId).notifier).loadAttachments(),
       );
-      final doc = ContentPipeline.fromMarkdown(note.content);
+      final doc = await ContentPipeline.fromMarkdown(
+        note.content,
+        noteId: noteId,
+        api: api,
+      );
       _quillController.document = doc;
       _titleController.text = note.title;
       final count = _countParagraphs(doc);
@@ -318,6 +324,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
             _DockedFormatBar(
               controller: _quillController,
               editorFocusNode: _editorFocus,
+              noteId: _loadedNoteId!,
             ),
           // ── Editor body ──────────────────────────────────────────────────
           Expanded(
@@ -348,6 +355,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
             _DockedFormatBar(
               controller: _quillController,
               editorFocusNode: _editorFocus,
+              noteId: _loadedNoteId!,
               scrollable: true,
             ),
         ],
@@ -682,6 +690,7 @@ class _EditorBody extends StatelessWidget {
                   autoFocus: false,
                   placeholder: 'Start writing\u2026',
                   customStyles: _buildStyles(),
+                  embedBuilders: [const LnImageEmbed()],
                   onSingleLongTapEnd: _isMobileWeb
                       ? (details, _) {
                           _showEditorClipboardMenu(
@@ -982,11 +991,13 @@ class _DockedFormatBar extends StatelessWidget {
   const _DockedFormatBar({
     required this.controller,
     required this.editorFocusNode,
+    required this.noteId,
     this.scrollable = false,
   });
 
   final QuillController controller;
   final FocusNode editorFocusNode;
+  final String noteId;
   final bool scrollable;
 
   @override
@@ -1002,6 +1013,7 @@ class _DockedFormatBar extends StatelessWidget {
       ),
       child: FormatToolbar(
         controller: controller,
+        noteId: noteId,
         scrollable: scrollable,
         editorFocusNode: editorFocusNode,
       ),
