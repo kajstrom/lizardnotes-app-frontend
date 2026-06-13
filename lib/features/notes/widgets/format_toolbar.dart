@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -23,6 +24,7 @@ class FormatToolbar extends StatefulWidget {
     required this.noteId,
     this.scrollable = false,
     this.editorFocusNode,
+    this.showClipboardActions = false,
   });
 
   final QuillController controller;
@@ -31,6 +33,12 @@ class FormatToolbar extends StatefulWidget {
   /// When provided, focus is restored to the editor after every format action.
   /// This prevents the toolbar from permanently stealing focus on web.
   final FocusNode? editorFocusNode;
+
+  /// When true, Copy / Cut / Paste / Select All buttons are prepended to the
+  /// toolbar. Used on mobile web, where flutter_quill's selection toolbar is
+  /// unavailable (it defers to the browser's native menu, which the app
+  /// disables) and there are no keyboard shortcuts.
+  final bool showClipboardActions;
 
   @override
   State<FormatToolbar> createState() => _FormatToolbarState();
@@ -94,6 +102,7 @@ class _FormatToolbarState extends State<FormatToolbar> {
       codeBlock: has(Attribute.codeBlock),
       linkActive: linkActive,
       linkDisabled: widget.controller.selection.isCollapsed && !linkActive,
+      hasSelection: !widget.controller.selection.isCollapsed,
     );
   }
 
@@ -145,6 +154,52 @@ class _FormatToolbarState extends State<FormatToolbar> {
     widget.controller.formatText(sel.start, sel.end - sel.start, attr);
   }
 
+  // -------------------------------------------------------------------------
+  // Clipboard actions (mobile web)
+  // -------------------------------------------------------------------------
+  // These read from the cached _savedSelection rather than the live selection,
+  // matching how formats are applied: a toolbar tap can shift focus before the
+  // handler runs, and ExcludeFocus keeps the editor's selection intact.
+
+  String _selectedText(TextSelection sel) =>
+      widget.controller.document.getPlainText(sel.start, sel.end - sel.start);
+
+  Future<void> _copy() async {
+    final sel = _savedSelection ?? widget.controller.selection;
+    if (sel.isCollapsed) return;
+    await Clipboard.setData(ClipboardData(text: _selectedText(sel)));
+    widget.editorFocusNode?.requestFocus();
+  }
+
+  Future<void> _cut() async {
+    final sel = _savedSelection ?? widget.controller.selection;
+    if (sel.isCollapsed) return;
+    await Clipboard.setData(ClipboardData(text: _selectedText(sel)));
+    widget.controller.replaceText(sel.start, sel.end - sel.start, '', null);
+    widget.editorFocusNode?.requestFocus();
+  }
+
+  Future<void> _paste() async {
+    final sel = _savedSelection ?? widget.controller.selection;
+    final data = await Clipboard.getData(Clipboard.kTextPlain);
+    if (data?.text case final txt?) {
+      final index = sel.isCollapsed ? sel.baseOffset : sel.start;
+      final length = sel.isCollapsed ? 0 : sel.end - sel.start;
+      widget.controller.replaceText(index, length, txt, null);
+    }
+    widget.editorFocusNode?.requestFocus();
+  }
+
+  void _selectAll() {
+    widget.controller.updateSelection(
+      TextSelection(
+        baseOffset: 0,
+        extentOffset: widget.controller.document.length - 1,
+      ),
+      ChangeSource.local,
+    );
+  }
+
   Future<void> _openImagePicker() async {
     final selected = await showImagePickerDialog(
       context: context,
@@ -189,6 +244,31 @@ class _FormatToolbarState extends State<FormatToolbar> {
   Widget build(BuildContext context) {
     final v = _lastVisual;
     final buttons = [
+      if (widget.showClipboardActions) ...[
+        _ToolbarButton(
+          label: 'Copy',
+          isActive: false,
+          disabled: !v.hasSelection,
+          onTap: _copy,
+        ),
+        _ToolbarButton(
+          label: 'Cut',
+          isActive: false,
+          disabled: !v.hasSelection,
+          onTap: _cut,
+        ),
+        _ToolbarButton(
+          label: 'Paste',
+          isActive: false,
+          onTap: _paste,
+        ),
+        _ToolbarButton(
+          label: 'All',
+          isActive: false,
+          onTap: _selectAll,
+        ),
+        const _ToolbarDivider(),
+      ],
       _ToolbarButton(
         label: 'B',
         bold: true,
@@ -357,6 +437,7 @@ class _ToolbarVisualState {
     required this.codeBlock,
     required this.linkActive,
     required this.linkDisabled,
+    required this.hasSelection,
   });
 
   const _ToolbarVisualState.empty()
@@ -369,7 +450,8 @@ class _ToolbarVisualState {
         ol = false,
         codeBlock = false,
         linkActive = false,
-        linkDisabled = true;
+        linkDisabled = true,
+        hasSelection = false;
 
   final bool bold;
   final bool italic;
@@ -381,6 +463,7 @@ class _ToolbarVisualState {
   final bool codeBlock;
   final bool linkActive;
   final bool linkDisabled;
+  final bool hasSelection;
 
   @override
   bool operator ==(Object other) =>
@@ -394,7 +477,8 @@ class _ToolbarVisualState {
       other.ol == ol &&
       other.codeBlock == codeBlock &&
       other.linkActive == linkActive &&
-      other.linkDisabled == linkDisabled;
+      other.linkDisabled == linkDisabled &&
+      other.hasSelection == hasSelection;
 
   @override
   int get hashCode => Object.hash(
@@ -408,6 +492,7 @@ class _ToolbarVisualState {
         codeBlock,
         linkActive,
         linkDisabled,
+        hasSelection,
       );
 }
 

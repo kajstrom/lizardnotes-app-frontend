@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_quill/flutter_quill.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -357,6 +356,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
               editorFocusNode: _editorFocus,
               noteId: _loadedNoteId!,
               scrollable: true,
+              showClipboardActions: _isMobileWeb,
             ),
         ],
       ),
@@ -559,72 +559,17 @@ class _SaveIndicator extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------------------
-// Mobile-web clipboard menu
+// Mobile-web detection
 // ---------------------------------------------------------------------------
 
 // On mobile web, QuillRawEditorState.showToolbar() returns false unconditionally
-// (it expects the browser's native context menu). But Flutter's pointer event
-// handling prevents the browser from generating a contextmenu event via
-// long-press. This helper is invoked from onSingleLongTapEnd to show a
-// Flutter-native popup instead.
+// (it defers to the browser's native context menu, which the app disables). With
+// no keyboard shortcuts either, the docked FormatToolbar provides explicit
+// Copy / Cut / Paste / Select All actions instead — gated on this getter.
 bool get _isMobileWeb =>
     kIsWeb &&
     (defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS);
-
-Future<void> _showEditorClipboardMenu(
-  BuildContext context,
-  Offset globalPosition,
-  QuillController controller,
-) async {
-  final sel = controller.selection;
-  final hasSelection = !sel.isCollapsed;
-
-  final result = await showMenu<String>(
-    context: context,
-    position: RelativeRect.fromLTRB(
-      globalPosition.dx,
-      globalPosition.dy,
-      globalPosition.dx + 1,
-      globalPosition.dy + 1,
-    ),
-    items: [
-      if (hasSelection) ...[
-        const PopupMenuItem<String>(value: 'copy', child: Text('Copy')),
-        const PopupMenuItem<String>(value: 'cut', child: Text('Cut')),
-      ],
-      const PopupMenuItem<String>(value: 'paste', child: Text('Paste')),
-      const PopupMenuItem<String>(value: 'selectAll', child: Text('Select All')),
-    ],
-  );
-
-  if (!context.mounted) return;
-
-  switch (result) {
-    case 'copy':
-      await Clipboard.setData(ClipboardData(text: controller.getPlainText()));
-    case 'cut':
-      await Clipboard.setData(ClipboardData(text: controller.getPlainText()));
-      controller.replaceText(sel.start, sel.end - sel.start, '', null);
-    case 'paste':
-      final data = await Clipboard.getData(Clipboard.kTextPlain);
-      if (data?.text case final txt?) {
-        final index = sel.isCollapsed ? sel.baseOffset : sel.start;
-        final length = sel.isCollapsed ? 0 : sel.end - sel.start;
-        controller.replaceText(index, length, txt, null);
-      }
-    case 'selectAll':
-      controller.updateSelection(
-        TextSelection(
-          baseOffset: 0,
-          extentOffset: controller.document.length - 1,
-        ),
-        ChangeSource.local,
-      );
-    default:
-      break;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Editor body
@@ -691,16 +636,6 @@ class _EditorBody extends StatelessWidget {
                   placeholder: 'Start writing\u2026',
                   customStyles: _buildStyles(),
                   embedBuilders: [const LnImageEmbed()],
-                  onSingleLongTapEnd: _isMobileWeb
-                      ? (details, _) {
-                          _showEditorClipboardMenu(
-                            context,
-                            details.globalPosition,
-                            quillController,
-                          );
-                          return false;
-                        }
-                      : null,
                 ),
               ),
             ],
@@ -993,12 +928,14 @@ class _DockedFormatBar extends StatelessWidget {
     required this.editorFocusNode,
     required this.noteId,
     this.scrollable = false,
+    this.showClipboardActions = false,
   });
 
   final QuillController controller;
   final FocusNode editorFocusNode;
   final String noteId;
   final bool scrollable;
+  final bool showClipboardActions;
 
   @override
   Widget build(BuildContext context) {
@@ -1016,6 +953,7 @@ class _DockedFormatBar extends StatelessWidget {
         noteId: noteId,
         scrollable: scrollable,
         editorFocusNode: editorFocusNode,
+        showClipboardActions: showClipboardActions,
       ),
     );
   }
