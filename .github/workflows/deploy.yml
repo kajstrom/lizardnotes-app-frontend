@@ -30,6 +30,16 @@ jobs:
           path: coverage/
           retention-days: 7
 
+  # Builds the debug APK and uploads it as a run artifact. Runs alongside the
+  # web deploy rather than gating it: a broken APK should not block shipping
+  # the web app, and the failure is still visible on the run.
+  android:
+    needs: [test]
+    permissions:
+      id-token: write
+      contents: read
+    uses: ./.github/workflows/android-build.yml
+
   deploy:
     runs-on: ubuntu-latest
     needs: [test]

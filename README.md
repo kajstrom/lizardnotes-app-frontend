@@ -49,19 +49,21 @@ Deployment runs via GitHub Actions: build → sync to S3 → CloudFront invalida
 |---|---|---|
 | PR Check | `.github/workflows/pr-check.yml` | Pull requests targeting master; push to master |
 | Deploy | `.github/workflows/deploy.yml` | Push to master only |
-| Android Build | `.github/workflows/android-build.yml` | Manual (`workflow_dispatch`) |
+| Android Build | `.github/workflows/android-build.yml` | Push to master (called by Deploy after tests); manual (`workflow_dispatch`) from master only |
 
 `pr-check.yml` runs `flutter analyze` and `flutter test --coverage` with no AWS access — it is fully offline.
 
-`deploy.yml` runs the same test suite first, then deploys only if tests pass (`needs: [test]`). A failed test prevents deployment.
+`deploy.yml` runs the same test suite first, then deploys only if tests pass (`needs: [test]`). A failed test prevents deployment. It also calls `android-build.yml` as a reusable workflow once the tests pass, so every push to master produces an APK. The Android job runs alongside the web deploy rather than gating it — a broken APK does not block shipping the web app.
 
-`android-build.yml` builds a **debug-signed** APK and uploads it as a workflow artifact. It is manual-only and never deploys anywhere. `versionName` comes from `pubspec.yaml`; `versionCode` is the workflow run number, so successive builds always install over each other.
+`android-build.yml` builds a **debug-signed** APK and uploads it as a workflow artifact; it never deploys anywhere. `versionName` comes from `pubspec.yaml`; `versionCode` is the workflow run number, so successive builds always install over each other.
+
+It can also be dispatched manually, but **only from master** — the deploy role's trust policy allows no other branch, so the workflow fails fast with an explicit error if dispatched from anywhere else. To get an APK for a feature branch, merge it to master.
 
 Both `deploy.yml` and `android-build.yml` get their build-time config (`API_URL`, `COGNITO_USER_POOL_ID`, `COGNITO_APP_CLIENT_ID`) from the shared `.github/actions/fetch-config` composite action, which assumes the deploy role and reads SSM.
 
 ### Installing the Android build
 
-1. Actions → **Android Build** → *Run workflow*.
+1. Every push to master builds one automatically — open the **Deploy** run for the commit you want. To trigger one by hand instead, use Actions → **Android Build** → *Run workflow* and select `master`.
 2. Download the `lizardnotes-debug-apk-<run>` artifact from the finished run and unzip it.
 3. Copy `app-debug.apk` to the device and install it (requires "install unknown apps" for whatever app opens it).
 
@@ -80,11 +82,13 @@ Set these as **repository variables** (Settings → Secrets and variables → Ac
 
 No AWS access keys are stored anywhere. The workflows use GitHub OIDC to assume a manually created IAM role (`AWS_DEPLOY_ROLE_ARN`). The role's trust policy is scoped to this repository.
 
-The trust policy must match branches other than `master`, because `android-build.yml` is dispatched manually and can be run from any branch. Use a `StringLike` condition on `sub`:
+The trust policy is scoped to `master` alone. Every workflow that touches AWS runs on a push to master — including the Android build, which `deploy.yml` calls after the tests — so no other branch ever needs to assume the role. Use a `StringEquals` condition on `sub`:
 
 ```
-"repo:kajstrom/lizardnotes-app-frontend:ref:refs/heads/*"
+"repo:kajstrom/lizardnotes-app-frontend:ref:refs/heads/master"
 ```
+
+Do not widen this to `refs/heads/*` with a `StringLike` condition. Any branch pushed to the repository would then be able to assume the deploy role and read the SSM configuration, so a workflow change on an unreviewed branch would be enough to reach AWS. If you need an APK from a feature branch, merge it to master instead.
 
 `.github/iam-deploy-role.json` documents the intended policy — it is **not** applied by anything, so edit the live role in the IAM console to match.
 

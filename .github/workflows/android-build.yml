@@ -1,7 +1,11 @@
 name: Android Build
 
 on:
+  # Manual runs. Only master can reach AWS — see the guard step below.
   workflow_dispatch:
+  # Called by the Deploy workflow after the tests pass on master, so the build
+  # steps live in one place rather than being duplicated there.
+  workflow_call:
 
 permissions:
   id-token: write
@@ -11,6 +15,21 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      # The deploy role trusts only refs/heads/master, so a dispatch from any
+      # other branch cannot assume it. Without this the run gets three steps in
+      # and dies inside configure-aws-credentials with an opaque OIDC "not
+      # authorized to perform sts:AssumeRoleWithWebIdentity" error. Fail here
+      # instead, naming the actual cause.
+      - name: Enforce master-only dispatch
+        if: >-
+          github.event_name == 'workflow_dispatch' &&
+          github.ref != 'refs/heads/master'
+        run: |
+          echo "::error::Android Build can only be dispatched from master (got ${{ github.ref }})."
+          echo "The deploy role's trust policy allows refs/heads/master only."
+          echo "See the Credentials section of README.md."
+          exit 1
+
       - uses: actions/checkout@v4
 
       - name: Setup Java

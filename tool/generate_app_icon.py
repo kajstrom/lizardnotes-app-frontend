@@ -300,7 +300,7 @@ print("  mipmap-anydpi-v26/ic_launcher.xml")
 with open(os.path.join(RES, "values", "ic_launcher_background.xml"), "w") as f:
     f.write("""<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- --ln-surface from DESIGNS.md -->
+    <!-- ln-surface token from DESIGNS.md (XML comments cannot contain "-" twice) -->
     <color name="ic_launcher_background">#222222</color>
 </resources>
 """)
