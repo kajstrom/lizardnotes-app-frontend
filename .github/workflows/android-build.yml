@@ -1,7 +1,11 @@
 name: Android Build
 
 on:
+  # Manual runs from any branch.
   workflow_dispatch:
+  # Called by the Deploy workflow after the tests pass on master, so the build
+  # steps live in one place rather than being duplicated there.
+  workflow_call:
 
 permissions:
   id-token: write
