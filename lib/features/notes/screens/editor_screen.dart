@@ -211,6 +211,24 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
     });
   }
 
+  // ── Back navigation ──────────────────────────────────────────────────────
+
+  /// Leaves the editor for the list the user came from.
+  ///
+  /// Shared by the topbar chevron and the Android system back button so both
+  /// land in the same place. [loadedNote] is null on a cold deep link (session
+  /// restore) where the note provider was never populated — then there is no
+  /// folder context and we fall back to the folder list.
+  void _navigateBackToList(Note? loadedNote) {
+    final folderId =
+        loadedNote?.folderId ?? ref.read(noteProvider).currentFolderId;
+    if (folderId != null) {
+      context.go('${RouteNames.appFolders}/$folderId');
+    } else {
+      context.go(RouteNames.appFolders);
+    }
+  }
+
   // ── Breadcrumb ───────────────────────────────────────────────────────────
 
   List<String> _buildBreadcrumbSegments(Note note) {
@@ -276,12 +294,28 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
       return const _EmptyState();
     }
 
-    return Scaffold(
-      backgroundColor: LnColors.lnBg,
-      resizeToAvoidBottomInset: true,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+    // On mobile the editor is a single-page GoRouter stack (/app/notes/:id is
+    // a sibling of /app/folders, not a child), so there is nothing for the
+    // Android back button to pop and the activity would finish — the app
+    // exits. Intercept back and route to the list instead. Desktop keeps the
+    // default behaviour so browser back still works on web.
+    return PopScope(
+      canPop: isDesktop,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        _navigateBackToList(loadedNote);
+      },
+      child: Scaffold(
+        backgroundColor: LnColors.lnBg,
+        resizeToAvoidBottomInset: true,
+        // The topbar paints its own status-bar inset so its surface colour
+        // extends behind the clock; the bottom inset is handled here so the
+        // docked format toolbar clears the gesture nav bar.
+        body: SafeArea(
+          top: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
           // ── Topbar ───────────────────────────────────────────────────────
           _Topbar(
             isDesktop: isDesktop,
@@ -292,16 +326,7 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
                 : const [],
             onToggleNoteList: isDesktop
                 ? () => ref.read(noteListVisibleProvider.notifier).toggle()
-                : () {
-                    final folderId = loadedNote?.folderId ??
-                        ref.read(noteProvider).currentFolderId;
-                    if (folderId != null) {
-                      context.go(
-                          '${RouteNames.appFolders}/$folderId');
-                    } else {
-                      context.go(RouteNames.appFolders);
-                    }
-                  },
+                : () => _navigateBackToList(loadedNote),
             onActionsMenu: (pos) async {
               if (loadedNote == null) return;
               if (isDesktop) {
@@ -358,7 +383,9 @@ class _EditorScreenState extends ConsumerState<EditorScreen> {
               scrollable: true,
               showClipboardActions: _isMobileWeb,
             ),
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -387,8 +414,14 @@ class _Topbar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Android draws edge-to-edge, so without this the 44px bar starts at y=0
+    // and its controls sit under the status bar, out of reach. Padding rather
+    // than SafeArea keeps the surface colour painted behind the status bar.
+    final topInset = MediaQuery.paddingOf(context).top;
+
     return Container(
-      height: 44,
+      height: 44 + topInset,
+      padding: EdgeInsets.only(top: topInset),
       decoration: const BoxDecoration(
         color: LnColors.lnSurface,
         border: Border(
