@@ -1,0 +1,53 @@
+name: Android Build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: ./.github/actions/setup-flutter
+
+      - name: Restore Gradle cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: gradle-${{ runner.os }}-
+
+      - name: Fetch build config
+        uses: ./.github/actions/fetch-config
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: flutter build apk
+        run: |
+          flutter build apk --debug \
+            --build-number=${{ github.run_number }} \
+            --dart-define=API_URL="$API_URL" \
+            --dart-define=COGNITO_USER_POOL_ID="$COGNITO_USER_POOL_ID" \
+            --dart-define=COGNITO_APP_CLIENT_ID="$COGNITO_APP_CLIENT_ID"
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: lizardnotes-debug-apk-${{ github.run_number }}
+          path: build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 14

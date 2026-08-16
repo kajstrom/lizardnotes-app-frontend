@@ -1,0 +1,36 @@
+name: Fetch build config
+description: Assume the deploy role via OIDC and export the app's build-time config from SSM
+
+inputs:
+  role-to-assume:
+    description: ARN of the IAM role to assume via GitHub OIDC
+    required: true
+  aws-region:
+    description: AWS region holding the SSM parameters
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Configure AWS credentials (OIDC)
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.role-to-assume }}
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Read SSM parameters
+      shell: bash
+      run: |
+        fetch() {
+          local val
+          val=$(aws ssm get-parameter --name "$1" \
+            --query Parameter.Value --output text)
+          if [[ -z "$val" ]]; then
+            echo "ERROR: SSM parameter $1 returned empty" >&2
+            exit 1
+          fi
+          echo "$val"
+        }
+        echo "API_URL=$(fetch /lizardnotes/apigateway/apiUrl)" >> $GITHUB_ENV
+        echo "COGNITO_USER_POOL_ID=$(fetch /lizardnotes/cognito/userPoolId)" >> $GITHUB_ENV
+        echo "COGNITO_APP_CLIENT_ID=$(fetch /lizardnotes/cognito/appClientId)" >> $GITHUB_ENV
