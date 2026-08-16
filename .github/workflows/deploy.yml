@@ -39,13 +39,13 @@ jobs:
       - name: Setup Flutter
         uses: ./.github/actions/setup-flutter
 
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Fetch build config
+        uses: ./.github/actions/fetch-config
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Read SSM parameters
+      - name: Read web deploy targets
         run: |
           fetch() {
             local val
@@ -57,9 +57,6 @@ jobs:
             fi
             echo "$val"
           }
-          echo "API_URL=$(fetch /lizardnotes/apigateway/apiUrl)" >> $GITHUB_ENV
-          echo "COGNITO_USER_POOL_ID=$(fetch /lizardnotes/cognito/userPoolId)" >> $GITHUB_ENV
-          echo "COGNITO_APP_CLIENT_ID=$(fetch /lizardnotes/cognito/appClientId)" >> $GITHUB_ENV
           echo "BUCKET_NAME=$(fetch /lizardnotes/frontend/bucketName)" >> $GITHUB_ENV
           echo "DISTRIBUTION_ID=$(fetch /lizardnotes/frontend/distributionId)" >> $GITHUB_ENV
 

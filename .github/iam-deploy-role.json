@@ -6,7 +6,9 @@
     "   (e.g. arn:aws:s3:::lizardnotes-frontend-prod).",
     "4. Replace <DISTRIBUTION_ARN> with the ARN of the CloudFront distribution",
     "   (e.g. arn:aws:cloudfront::<ACCOUNT_ID>:distribution/ABCDEFGHIJ).",
-    "5. See README.md (CI/CD section) for the step-by-step console instructions."
+    "5. See README.md (CI/CD section) for the step-by-step console instructions.",
+    "NOTE: this file is documentation only — editing it does not change the live",
+    "role. Apply changes by hand in the IAM console."
   ],
 
   "TrustPolicy": {
@@ -20,8 +22,10 @@
         "Action": "sts:AssumeRoleWithWebIdentity",
         "Condition": {
           "StringEquals": {
-            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com",
-            "token.actions.githubusercontent.com:sub": "repo:kajstrom/lizardnotes-app-frontend:ref:refs/heads/master"
+            "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+          },
+          "StringLike": {
+            "token.actions.githubusercontent.com:sub": "repo:kajstrom/lizardnotes-app-frontend:ref:refs/heads/*"
           }
         }
       }
