@@ -40,6 +40,7 @@ dependencies:
   go_router: any
   shared_preferences: any
   file_picker: any
+  image_picker: any
   mime: any
   qr_flutter: any
   google_fonts: any

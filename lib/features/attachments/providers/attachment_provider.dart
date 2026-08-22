@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../api/api_client.dart';
@@ -110,6 +111,17 @@ Future<void> _defaultClipboardWriter(String text) =>
 
 final clipboardWriterProvider =
     Provider<ClipboardWriter>((_) => _defaultClipboardWriter);
+
+typedef CameraPicker = Future<XFile?> Function();
+
+Future<XFile?> _defaultCameraPicker() => ImagePicker().pickImage(
+      source: ImageSource.camera,
+      maxWidth: 1920,
+      imageQuality: 85,
+    );
+
+final cameraPickerProvider =
+    Provider<CameraPicker>((_) => _defaultCameraPicker);
 
 // ---------------------------------------------------------------------------
 // State
